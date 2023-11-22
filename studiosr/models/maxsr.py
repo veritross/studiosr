@@ -1,6 +1,5 @@
 import math
 import os
-import sys
 
 import numpy as np
 import torch
@@ -9,7 +8,6 @@ from einops.layers.torch import Rearrange, Reduce
 from torch import einsum, nn
 from torch.nn.functional import pad
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 # helpers
 
 
@@ -578,6 +576,7 @@ class MaxSR(nn.Module):
         light: bool = True,
         adaptive: bool = False,
         pretrained: bool = False,
+        ckpt_root: str = "../../checkpoints/"
     ):
         config = {
             "adaptive": adaptive,
@@ -600,16 +599,11 @@ class MaxSR(nn.Module):
         # It will be modified later.
         if pretrained:
             # ckpt_root will be modified later.
-            ckpt_root = "/data/mouseku/repos/studiosr/checkpoints/"
-            # file_path = os.listdir(ckpt_root)
-            # file_path = sorted(file_path, reverse=True)
-            # print(file_path[0])
+            file_path = os.listdir(ckpt_root)
+            file_path = sorted(file_path, reverse=True)
             iter = 500000
             ckpt = os.path.join(ckpt_root, f"ckpt_{iter}.pth")
             ckpt = torch.load(ckpt)
-            # name = ckpt["model name"]
-            # iter = ckpt["iter"]
-            # print(f"Model Name : {name},\t Iter : {iter}")
             model.load_state_dict(ckpt)
 
         return model
