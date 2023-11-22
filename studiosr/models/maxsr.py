@@ -1,6 +1,5 @@
 import math
 import os
-import sys
 
 import numpy as np
 import torch
@@ -9,7 +8,6 @@ from einops.layers.torch import Rearrange, Reduce
 from torch import einsum, nn
 from torch.nn.functional import pad
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 # helpers
 
 
@@ -34,11 +32,11 @@ class PreNormResidual(nn.Module):
         self.norm = nn.LayerNorm(dim)
         self.fn = fn
 
-    def forward(self, x, window_size=None):
-        if window_size is None:
+    def forward(self, x, window_height=None, window_width=None):
+        if window_height is None or window_width is None:
             return self.fn(self.norm(x)) + x
         else:
-            return self.fn(self.norm(x), window_size) + x
+            return self.fn(self.norm(x), window_height, window_width) + x
 
 
 class FeedForward(nn.Module):
@@ -221,13 +219,13 @@ class Adaptive_Attention(nn.Module):
         # relative positional bias
         # self.rel_pos_bias = nn.Embedding((2 * window_size - 1) ** 2, self.heads)
 
-    def forward(self, x, window_size):
+    def forward(self, x, window_height, window_width):
         _, h, w, w1, w2, _, device = *x.shape, x.device
 
         x = self.norm(x)
 
         # flatten
-
+        
         x = rearrange(x, "b x y w1 w2 d -> (b x y) (w1 w2) d")
 
         # project for queries, keys, values
@@ -247,15 +245,16 @@ class Adaptive_Attention(nn.Module):
 
         # add positional bias
 
-        pos = torch.arange(window_size).to(device)
-        grid = torch.stack(torch.meshgrid(pos, pos, indexing="ij")).to(device)
+        pos_height = torch.arange(window_height).to(device)
+        pos_width = torch.arange(window_width).to(device)
+        grid = torch.stack(torch.meshgrid(pos_height, pos_width, indexing="ij")).to(device)
         grid = rearrange(grid, "c i j -> (i j) c")
         rel_pos = (rearrange(grid, "i ... -> i 1 ...") - rearrange(grid, "j ... -> 1 j ...")).to(device)
-        rel_pos += window_size - 1
-        rel_pos_indices = (rel_pos * torch.tensor([2 * window_size - 1, 1]).to(device)).sum(dim=-1).to(device)
+        rel_pos += torch.tensor([window_height -1, window_width -1]).to(device)
+        rel_pos_indices = (rel_pos * torch.tensor([2 * window_width - 1, 1]).to(device)).sum(dim=-1).to(device)
         self.register_buffer("rel_pos_indices", rel_pos_indices, persistent=False)
 
-        rel_pos_bias = nn.Embedding((2 * window_size - 1) ** 2, self.heads).to(device)
+        rel_pos_bias = nn.Embedding((2 * window_height - 1) * (2 * window_width -1), self.heads).to(device)
         rel_pos_bias = rel_pos_bias(rel_pos_indices)
         rel_pos_bias = rearrange(rel_pos_bias, "i j h -> h i j")
 
@@ -277,9 +276,6 @@ class Adaptive_Attention(nn.Module):
         out = self.to_out(out)
         return rearrange(out, "(b x y) ... -> b x y ...", x=h, y=w)
 
-    def calc_rel_pos_bias(self, window_size):
-        self.rel_pos_bias = nn.Embedding((2 * window_size - 1) ** 2, self.heads)
-
 
 class BlockAttention(nn.Module):
     def __init__(self, layer_dim, dim_head, dropout):
@@ -290,9 +286,9 @@ class BlockAttention(nn.Module):
         self.feedforward = PreNormResidual(layer_dim, FeedForward(dim=layer_dim, dropout=dropout))
         self.rearrange2 = Rearrange("b x y w1 w2 d -> b d (x w1) (y w2)")
 
-    def forward(self, x, window_size):
-        x = Rearrange("b d (x w1) (y w2) -> b x y w1 w2 d", w1=window_size, w2=window_size)(x)
-        x = self.attention(x, window_size)
+    def forward(self, x, window_height, window_width):
+        x = Rearrange("b d (x w1) (y w2) -> b x y w1 w2 d", w1=window_height, w2=window_width)(x)
+        x = self.attention(x, window_height, window_width)
         x = self.feedforward(x)
         x = self.rearrange2(x)
         return x
@@ -310,9 +306,9 @@ class GridAttention(nn.Module):
         if not is_VT:
             self.rearrange2 = Rearrange("b x y w1 w2 d -> b d (w1 x) (w2 y)")
 
-    def forward(self, x, window_size):
-        x = Rearrange("b d (w1 x) (w2 y) -> b x y w1 w2 d", w1=window_size, w2=window_size)(x)
-        x = self.attention(x, window_size)
+    def forward(self, x, window_height, window_width):
+        x = Rearrange("b d (w1 x) (w2 y) -> b x y w1 w2 d", w1=window_height, w2=window_width)(x)
+        x = self.attention(x, window_height, window_width)
         x = self.feedforward(x)
         if not self.is_VT:
             x = self.rearrange2(x)
@@ -460,9 +456,9 @@ class MaxSR(nn.Module):
             for ind, layers in enumerate(stage):
                 if ind % 3 != 0 and self.adaptive:
                     batch, channel, height, width = x.shape
-                    window_size = self.calculate_window_size(height, width)
-                    x = pad(x, (0, (window_size * window_size) - width, 0, (window_size * window_size) - height))
-                    x = layers(x, window_size)
+                    window_height, window_width = self.calculate_window_size(height, width)
+                    x = pad(x, (0, (window_width * window_width) - width, 0, (window_height * window_height) - height))
+                    x = layers(x, window_height, window_width)
                 else:
                     x = layers(x)
             F.append(x)
@@ -485,6 +481,9 @@ class MaxSR(nn.Module):
             x = x[:, :, : H * self.upscale, : W * self.upscale]
 
         return x
+
+    def calculate_window_size(self, height, width):
+        return math.ceil(math.sqrt(height)), math.ceil(math.sqrt(width))
 
     def Ada_MaxViT_Block(
         self,
@@ -523,8 +522,6 @@ class MaxSR(nn.Module):
 
         return layers
 
-    def calculate_window_size(self, height, width):
-        return max(math.ceil(math.sqrt(height)), math.ceil(math.sqrt(width)))
 
     def MaxViT_Block(
         self,
@@ -579,6 +576,7 @@ class MaxSR(nn.Module):
         light: bool = True,
         adaptive: bool = False,
         pretrained: bool = False,
+        ckpt_root: str = "../../checkpoints/"
     ):
         config = {
             "adaptive": adaptive,
@@ -601,24 +599,21 @@ class MaxSR(nn.Module):
         # It will be modified later.
         if pretrained:
             # ckpt_root will be modified later.
-            ckpt_root = "/data/mouseku/repos/vit-pytorch/checkpoints/"
             file_path = os.listdir(ckpt_root)
-            sorted(file_path)
-            ckpt = os.path.join(ckpt_root, file_path[0])
+            file_path = sorted(file_path, reverse=True)
+            iter = 500000
+            ckpt = os.path.join(ckpt_root, f"ckpt_{iter}.pth")
             ckpt = torch.load(ckpt)
-            name = ckpt["model name"]
-            iter = ckpt["iter"]
-            print(f"Model Name : {name},\t Iter : {iter}")
-            model.load_state_dict(ckpt["model"])
+            model.load_state_dict(ckpt)
 
         return model
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     model = MaxSR.from_pretrained(adaptive=True)
-#     # print(model)
+    model = MaxSR.from_pretrained(adaptive=True)
+    # print(model)
 
-#     x = torch.randn((1, 3, 224, 224))
-#     x = model(x)
-#     print(x.shape)
+    x = torch.randn((1, 3, 112, 224))
+    x = model(x)
+    print(x.shape)
