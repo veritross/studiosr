@@ -51,7 +51,6 @@ class Evaluator:
         self,
         func: Callable,
         y_only: bool = True,
-        log: bool = True,
         visualize: bool = False,
     ):
         crop_border = self.scale
@@ -62,16 +61,16 @@ class Evaluator:
             ssim = compute_ssim(sr, gt, crop_border=crop_border, y_only=y_only)
             psnrs.append(psnr)
             ssims.append(ssim)
-            if log:
-                print(f" {self.dataset:>8} - {i+1:<3}  PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}")
+            print(
+                f" {self.dataset:>8} - {i+1:>3}/{len(self.testset):>3} PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}", end="\r"
+            )
             if visualize:
                 nn = cv2.resize(lq, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_NEAREST)
                 bc = cv2.resize(lq, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_CUBIC)
                 compare([nn[:, :, ::-1], bc[:, :, ::-1], sr[:, :, ::-1], gt[:, :, ::-1]])
         psnr = np.mean(psnrs)
         ssim = np.mean(ssims)
-        if log:
-            print(f"\n {self.dataset:>8} - Avg. PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}\n")
+        print(f" {self.dataset:>8} - Average PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}")
         return psnr, ssim
 
     @staticmethod
@@ -99,20 +98,20 @@ class Evaluator:
         return benchmark_path
 
     @staticmethod
-    def benchmark(func: Callable, scale: int = 4, y_only: bool = True, log: bool = True) -> None:
+    def benchmark(func: Callable, scale: int = 4, y_only: bool = True) -> None:
         log_data = "| Metric |"
         log_line = "| ------ |"
         log_psnr = "|   PSNR |"
         log_ssim = "|   SSIM |"
-        for dataset in ["Set5", "Set14", "BSD100", "Urban100", "Manga109"]:
-            evaluator = Evaluator(dataset, scale)
-            psnr, ssim = evaluator.run(func, y_only, log=log)
 
+        for dataset in ["Set5", "Set14", "BSD100", "Urban100", "Manga109"]:
+            psnr, ssim = Evaluator(dataset, scale).run(func, y_only)
             log_data += " %8s |" % dataset
             log_line += " -------- |"
             log_psnr += " %8.3f |" % psnr
             log_ssim += " %8.4f |" % ssim
 
+        print()
         print(log_data)
         print(log_line)
         print(log_psnr)

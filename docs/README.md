@@ -27,11 +27,11 @@ import torch
 from studiosr import Evaluator
 from studiosr.models import SwinIR
 
-scale = 4
+scale = 2  # 2, 3, 4
+dataset = "Set5"  # Set5, Set14, BSD100, Urban100, Manga109
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SwinIR.from_pretrained(scale=scale).eval().to(device)
-evaluator = Evaluator("Set5", scale=scale)
-evaluator.run(model.inference)
+Evaluator(dataset, scale=scale).run(model.inference)
 ```
 
 ### Benchmark
@@ -39,12 +39,14 @@ evaluator.run(model.inference)
 import torch
 
 from studiosr import Evaluator
-from studiosr.models import SwinIR
+from studiosr.models import RCAN, HAN, SwinIR, HAT
 
-scale = 4
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = SwinIR.from_pretrained(scale=scale).eval().to(device)
-Evaluator.benchmark(model.inference, scale=scale)
+for model_class in [RCAN, HAN, SwinIR, HAT]:
+    for scale in [2, 3, 4]:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = model_class.from_pretrained(scale=scale).eval().to(device)
+        print(f"Benchmark -> {model_class.__name__}")
+        Evaluator.benchmark(model.inference, scale=scale)
 ```
 
 ## Models
