@@ -1,12 +1,13 @@
 import math
-import os
+from typing import List, Optional
 
-import numpy as np
 import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange, Reduce
 from torch import einsum, nn
 from torch.nn.functional import pad
+
+from .base import BaseModule
 
 # helpers
 
@@ -225,7 +226,7 @@ class Adaptive_Attention(nn.Module):
         x = self.norm(x)
 
         # flatten
-        
+
         x = rearrange(x, "b x y w1 w2 d -> (b x y) (w1 w2) d")
 
         # project for queries, keys, values
@@ -250,11 +251,11 @@ class Adaptive_Attention(nn.Module):
         grid = torch.stack(torch.meshgrid(pos_height, pos_width, indexing="ij")).to(device)
         grid = rearrange(grid, "c i j -> (i j) c")
         rel_pos = (rearrange(grid, "i ... -> i 1 ...") - rearrange(grid, "j ... -> 1 j ...")).to(device)
-        rel_pos += torch.tensor([window_height -1, window_width -1]).to(device)
+        rel_pos += torch.tensor([window_height - 1, window_width - 1]).to(device)
         rel_pos_indices = (rel_pos * torch.tensor([2 * window_width - 1, 1]).to(device)).sum(dim=-1).to(device)
         self.register_buffer("rel_pos_indices", rel_pos_indices, persistent=False)
 
-        rel_pos_bias = nn.Embedding((2 * window_height - 1) * (2 * window_width -1), self.heads).to(device)
+        rel_pos_bias = nn.Embedding((2 * window_height - 1) * (2 * window_width - 1), self.heads).to(device)
         rel_pos_bias = rel_pos_bias(rel_pos_indices)
         rel_pos_bias = rearrange(rel_pos_bias, "i j h -> h i j")
 
@@ -374,34 +375,28 @@ class Upsample(nn.Sequential):
         super(Upsample, self).__init__(*m)
 
 
-class MaxSR(nn.Module):
+class MaxSR(BaseModule):
     def __init__(
         self,
-        *,
-        adaptive,
-        dim,
-        upscale,
-        depth,
-        dim_head=32,
-        window_size=8,
-        mbconv_expansion_rate=4,
-        mbconv_shrinkage_rate=0.25,
-        dropout=0.1,
-        channels=3,
-        img_range=1.0,
+        scale: int = 4,
+        n_colors: int = 3,
+        img_range: float = 1.0,
+        adaptive: bool = True,
+        dim: int = 128,
+        dim_head: int = 32,
+        depth: List[int] = [4, 4, 4, 4],
+        window_size: int = 8,
+        mbconv_expansion_rate: float = 4,
+        mbconv_shrinkage_rate: float = 0.25,
+        dropout: float = 0.1,
     ):
         super().__init__()
-        assert isinstance(
-            depth, tuple
-        ), "depth needs to be tuple if integers indicating number of transformer blocks at that stage"
 
-        self.adaptive = adaptive
         # variables
-
+        self.adaptive = adaptive
         num_stages = len(depth)
-
         self.img_range = img_range
-        if channels == 3:
+        if n_colors == 3:
             rgb_mean = (0.4488, 0.4371, 0.4040)
             self.mean = torch.Tensor(rgb_mean).view(1, 3, 1, 1)
         else:
@@ -409,7 +404,7 @@ class MaxSR(nn.Module):
 
         # convolutional stem
 
-        self.conv_stem_first = nn.Conv2d(channels, dim, 3, stride=1, padding=1)
+        self.conv_stem_first = nn.Conv2d(n_colors, dim, 3, stride=1, padding=1)
         self.conv_stem_second = nn.Conv2d(dim, dim, 3, padding=1)
 
         # MaxViT Block
@@ -425,10 +420,10 @@ class MaxSR(nn.Module):
         self.HFFB = HFFB(dim_in=dim * num_stages, hidden_dim=dim, dim_out=dim)  # 3*upscale*upscale
 
         # Upsampling
-        self.upscale = upscale
+        self.upscale = scale
         self.window_size = window_size
-        self.Upsample = Upsample(scale=upscale, num_feat=dim)
-        self.conv_last = nn.Conv2d(dim, channels, 3, 1, 1)
+        self.Upsample = Upsample(scale=scale, num_feat=dim)
+        self.conv_last = nn.Conv2d(dim, n_colors, 3, 1, 1)
 
     def check_image_size(self, x):
         _, _, h, w = x.size()
@@ -522,7 +517,6 @@ class MaxSR(nn.Module):
 
         return layers
 
-
     def MaxViT_Block(
         self,
         dim_head,
@@ -554,66 +548,34 @@ class MaxSR(nn.Module):
 
         return layers
 
-    @torch.no_grad()
-    def inference(self, image):
-        device = next(self.parameters()).get_device()
-        device = torch.device("cpu") if device < 0 else device
-        x = image.transpose(2, 0, 1).astype(np.float32) / 255.0
-        x = torch.from_numpy(x).unsqueeze(0)
-        x = x.to(device)
-
-        output = self.forward(x)
-
-        y = output.detach().float().squeeze().cpu().clamp_(0, 1) * 255.0
-        y = y.numpy().round().astype(np.uint8)
-        y = y.transpose(1, 2, 0)
-        return y
-
     @classmethod
     def from_pretrained(
         cls,
         scale: int = 4,
         light: bool = True,
         adaptive: bool = False,
-        pretrained: bool = False,
-        ckpt_root: str = "../../checkpoints/"
+        ckpt_path: Optional[str] = None,
     ):
         config = {
+            "scale": scale,
+            "n_colors": 3,
             "adaptive": adaptive,
             "dim": 128,
             "dim_head": 32,
-            "depth": (4, 4, 4, 4),
+            "depth": [4, 4, 4, 4],
             "window_size": 8,
             "mbconv_expansion_rate": 4,
             "mbconv_shrinkage_rate": 0.25,
             "dropout": 0.1,
-            "upscale": scale,
-            "channels": 3,
         }
         if light:
             config["dim"] = 48
             config["dim_head"] = 12
-            config["depth"] = (2, 2, 2, 2)
+            config["depth"] = [2, 2, 2, 2]
         model = MaxSR(**config)
 
-        # It will be modified later.
-        if pretrained:
-            # ckpt_root will be modified later.
-            file_path = os.listdir(ckpt_root)
-            file_path = sorted(file_path, reverse=True)
-            iter = 500000
-            ckpt = os.path.join(ckpt_root, f"ckpt_{iter}.pth")
-            ckpt = torch.load(ckpt)
+        if ckpt_path is not None:
+            ckpt = torch.load(ckpt_path)
             model.load_state_dict(ckpt)
 
         return model
-
-
-if __name__ == "__main__":
-
-    model = MaxSR.from_pretrained(adaptive=True)
-    # print(model)
-
-    x = torch.randn((1, 3, 112, 224))
-    x = model(x)
-    print(x.shape)

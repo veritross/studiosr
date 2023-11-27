@@ -995,7 +995,7 @@ class HAT(BaseModule):
         # calculate relative position index for SA
         coords_h = torch.arange(self.window_size)
         coords_w = torch.arange(self.window_size)
-        coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
+        coords = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"))  # 2, Wh, Ww
         coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
@@ -1012,12 +1012,12 @@ class HAT(BaseModule):
 
         coords_h = torch.arange(window_size_ori)
         coords_w = torch.arange(window_size_ori)
-        coords_ori = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, ws, ws
+        coords_ori = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"))  # 2, ws, ws
         coords_ori_flatten = torch.flatten(coords_ori, 1)  # 2, ws*ws
 
         coords_h = torch.arange(window_size_ext)
         coords_w = torch.arange(window_size_ext)
-        coords_ext = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, wse, wse
+        coords_ext = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"))  # 2, wse, wse
         coords_ext_flatten = torch.flatten(coords_ext, 1)  # 2, wse*wse
 
         relative_coords = coords_ext_flatten[:, None, :] - coords_ori_flatten[:, :, None]  # 2, ws*ws, wse*wse

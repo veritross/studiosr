@@ -70,7 +70,7 @@ def window_reverse(windows, window_size, H, W):
 
 
 class WindowAttention(nn.Module):
-    r"""Window based multi-head self attention (W-MSA) module with relative position bias.
+    """Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
 
     Args:
@@ -109,7 +109,7 @@ class WindowAttention(nn.Module):
         # get pair-wise relative position index for each token inside the window
         coords_h = torch.arange(self.window_size[0])
         coords_w = torch.arange(self.window_size[1])
-        coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
+        coords = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"))  # 2, Wh, Ww
         coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
@@ -186,7 +186,7 @@ class WindowAttention(nn.Module):
 
 
 class SwinTransformerBlock(nn.Module):
-    r"""Swin Transformer Block.
+    """Swin Transformer Block.
 
     Args:
         dim (int): Number of input channels.
@@ -556,7 +556,7 @@ class RSTB(nn.Module):
 
 
 class PatchEmbed(nn.Module):
-    r"""Image to Patch Embedding
+    """Image to Patch Embedding
 
     Args:
         img_size (int): Image size.  Default: 224.
@@ -609,7 +609,7 @@ class PatchEmbed(nn.Module):
 
 
 class PatchUnEmbed(nn.Module):
-    r"""Image to Patch Unembedding
+    """Image to Patch Unembedding
 
     Args:
         img_size (int): Image size.  Default: 224.
@@ -703,7 +703,7 @@ class UpsampleOneStep(nn.Sequential):
 
 
 class SwinIR(BaseModule):
-    r"""SwinIR
+    """SwinIR
         A PyTorch impl of : `SwinIR: Image Restoration Using Swin Transformer`, based on Swin Transformer.
 
     Args:
@@ -737,11 +737,11 @@ class SwinIR(BaseModule):
         img_range: float = 1.0,
         img_size: int = 64,
         patch_size: int = 1,
-        embed_dim: int = 96,
-        depths: List[int] = [6, 6, 6, 6],
-        num_heads: List[int] = [6, 6, 6, 6],
-        window_size: int = 7,
-        mlp_ratio: float = 4.0,
+        embed_dim: int = 180,
+        depths: List[int] = [6, 6, 6, 6, 6, 6],
+        num_heads: List[int] = [6, 6, 6, 6, 6, 6],
+        window_size: int = 8,
+        mlp_ratio: float = 2.0,
         qkv_bias: bool = True,
         qk_scale: Optional[float] = None,
         drop_rate: float = 0.0,
@@ -751,7 +751,7 @@ class SwinIR(BaseModule):
         ape: bool = False,
         patch_norm: bool = True,
         use_checkpoint: bool = False,
-        upsampler: str = "",
+        upsampler: str = "pixelshuffle",
         resi_connection: str = "1conv",
         **kwargs,
     ):
@@ -970,30 +970,18 @@ class SwinIR(BaseModule):
     @classmethod
     def from_pretrained(
         cls,
-        task: str = "classical_sr",
         scale: int = 4,
+        light: bool = False,
         dataset: str = "DIV2K",
         pretrained: bool = True,
     ):
-        assert task in ["classical_sr", "lightweight_sr"]
         assert scale in [2, 3, 4, 8]
         assert dataset in ["DIV2K", "DF2K"]
 
-        config = {
-            "upscale": scale,
-            "in_chans": 3,
-            "window_size": 8,
-            "img_range": 1.0,
-            "mlp_ratio": 2,
-            "resi_connection": "1conv",
-        }
-        if task == "classical_sr":
+        config = {"scale": scale}
+        if not light:
             img_size = 64 if dataset == "DF2K" else 48
             config["img_size"] = img_size
-            config["depths"] = [6, 6, 6, 6, 6, 6]
-            config["embed_dim"] = 180
-            config["num_heads"] = [6, 6, 6, 6, 6, 6]
-            config["upsampler"] = "pixelshuffle"
             file_name = f"001_classicalSR_{dataset}_s{img_size}w8_SwinIR-M_x{scale}.pth"
         else:
             img_size = 64

@@ -1,4 +1,5 @@
 import os
+import platform
 from typing import List
 
 import torch
@@ -51,7 +52,7 @@ class Trainer:
         self.evaluator = evaluator
 
         self.batch_size = batch_size
-        self.num_workers = num_workers
+        self.num_workers = 0 if platform.system() == "Windows" else num_workers
         self.max_iters = max_iters
         self.log_interval = log_interval
         self.ckpt_path = ckpt_path
