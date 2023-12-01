@@ -5,6 +5,32 @@ from .base import BaseModule
 
 
 class SRCNN(BaseModule):
+    """Super-Resolution Convolutional Neural Network (SRCNN).
+
+    Args:
+        - scale (int): Upsampling scale factor. Default is 4.
+        - n_colors (int): Number of input image channels. Default is 3.
+        - img_range (float): Range of pixel values in the input image. Default is 1.0.
+        - residual (bool): Flag indicating whether to use residual learning. Default is False.
+
+    Attributes:
+        - img_range (float): Range of pixel values in the input image.
+        - residual (bool): Flag indicating whether to use residual learning.
+        - mean (torch.Tensor): Mean value used for input normalization.
+        - upsample (nn.Upsample): Upsampling layer using bicubic interpolation.
+        - layers (nn.Sequential): Sequential layers defining the SRCNN architecture.
+
+    Methods:
+        - forward(x: torch.Tensor) -> torch.Tensor: Forward pass of the SRCNN model.
+
+    Note:
+        The SRCNN model architecture upsamples the input image using bicubic interpolation,
+        performs patch extraction and representation (Conv2d / ReLU) for extracting the spatial features.
+        It translates extraced features using defined non-linear mapping (Conv2d / ReLU),
+        then reconstructs them to produce final high-resolution image (Conv2d).
+        Refer to the http://google.github.io/styleguide/pyguide.html.
+    """
+
     def __init__(
         self,
         scale: int = 4,
