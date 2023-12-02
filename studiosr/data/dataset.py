@@ -3,7 +3,7 @@ import os
 import cv2
 from torch.utils.data import Dataset
 
-import studiosr.data.transforms as T
+from studiosr.data import transforms as T
 
 IMAGE_EXTENSIONS = [
     ".bmp",

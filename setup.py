@@ -36,5 +36,5 @@ setup(
             "pytest-xdist",
         ],
     },
-    python_requires=">=3.8",
+    python_requires=">=3.6",
 )
