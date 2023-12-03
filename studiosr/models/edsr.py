@@ -76,14 +76,10 @@ class EDSR(BaseModule):
         self.add_mean = MeanShift(img_range, sign=1)
 
         kernel_size = 3
-        m_head = [conv2d(n_colors, n_feats, kernel_size)]
+        self.head = nn.Sequential(conv2d(n_colors, n_feats, kernel_size))
         m_body = [ResBlock(n_feats, kernel_size, res_scale) for _ in range(n_resblocks)]
-        m_body.append(conv2d(n_feats, n_feats, kernel_size))
-        m_tail = [Upsampler(scale, n_feats), conv2d(n_feats, n_colors, kernel_size)]
-
-        self.head = nn.Sequential(*m_head)
-        self.body = nn.Sequential(*m_body)
-        self.tail = nn.Sequential(*m_tail)
+        self.body = nn.Sequential(*m_body, conv2d(n_feats, n_feats, kernel_size))
+        self.tail = nn.Sequential(Upsampler(scale, n_feats), conv2d(n_feats, n_colors, kernel_size))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.sub_mean(x)
@@ -95,6 +91,19 @@ class EDSR(BaseModule):
         x = self.tail(res)
         x = self.add_mean(x)
         return x
+
+    def get_training_config(self) -> Dict:
+        training_config = dict(
+            batch_size=16,
+            learning_rate=0.0001,
+            beta1=0.9,
+            beta2=0.99,
+            weight_decay=0.0,
+            max_iters=1000000,
+            gamma=0.5,
+            milestones=[200000, 400000, 600000, 800000],
+        )
+        return training_config
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> nn.Module:
@@ -116,16 +125,3 @@ class EDSR(BaseModule):
         pretrained = torch.load(path)
         model.load_state_dict(pretrained, strict=False)
         return model
-
-    @classmethod
-    def get_training_config(cls) -> Dict:
-        return dict(
-            batch_size=16,
-            learning_rate=0.0001,
-            beta1=0.9,
-            beta2=0.99,
-            weight_decay=0.0,
-            max_iters=1000000,
-            gamma=0.5,
-            milestones=[200000, 400000, 600000, 800000],
-        )

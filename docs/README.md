@@ -13,10 +13,16 @@ batch_size = 32
 gt_path = "/data/DIV2K_train_HR"
 lq_path = "/data/DIV2K_train_LR_bicubic/X4"
 dataset = PairedImageDataset(gt_path, lq_path, size, scale, True, True)
-
 evaluator = Evaluator(scale=scale)
+
 model = SRCNN(scale=scale)
 trainer = Trainer(model, dataset, evaluator, batch_size=batch_size)
+trainer.run()
+
+# Train with the model's training configuration.
+model = EDSR(scale=scale)
+config = model.get_training_config()
+trainer = Trainer(model, dataset, evaluator, **config)
 trainer.run()
 ```
 
