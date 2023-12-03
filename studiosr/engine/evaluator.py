@@ -45,7 +45,9 @@ class Evaluator:
         y_only: bool = True,
         visualize: bool = False,
     ):
-        return self.run(func, y_only, visualize)
+        psnr, ssim = self.run(func, y_only, visualize)
+        print(f" {self.dataset:>8} - Average PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}")
+        return psnr, ssim
 
     def run(
         self,
@@ -70,7 +72,6 @@ class Evaluator:
                 compare([nn[:, :, ::-1], bc[:, :, ::-1], sr[:, :, ::-1], gt[:, :, ::-1]])
         psnr = np.mean(psnrs)
         ssim = np.mean(ssims)
-        print(f" {self.dataset:>8} - Average PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}")
         return psnr, ssim
 
     @staticmethod
@@ -111,7 +112,6 @@ class Evaluator:
             log_psnr += " %8.3f |" % psnr
             log_ssim += " %8.4f |" % ssim
 
-        print()
         print(log_data)
         print(log_line)
         print(log_psnr)

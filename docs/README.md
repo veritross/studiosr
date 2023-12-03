@@ -31,7 +31,8 @@ scale = 2  # 2, 3, 4
 dataset = "Set5"  # Set5, Set14, BSD100, Urban100, Manga109
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SwinIR.from_pretrained(scale=scale).eval().to(device)
-Evaluator(dataset, scale=scale).run(model.inference)
+evaluator = Evaluator(dataset, scale=scale)
+psnr, ssim = evaluator(model.inference)
 ```
 
 ### Benchmark
