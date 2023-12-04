@@ -13,10 +13,16 @@ batch_size = 32
 gt_path = "/data/DIV2K_train_HR"
 lq_path = "/data/DIV2K_train_LR_bicubic/X4"
 dataset = PairedImageDataset(gt_path, lq_path, size, scale, True, True)
-
 evaluator = Evaluator(scale=scale)
+
 model = SRCNN(scale=scale)
 trainer = Trainer(model, dataset, evaluator, batch_size=batch_size)
+trainer.run()
+
+# Train with the model's training configuration.
+model = EDSR(scale=scale)
+config = model.get_training_config()
+trainer = Trainer(model, dataset, evaluator, **config)
 trainer.run()
 ```
 
@@ -31,7 +37,8 @@ scale = 2  # 2, 3, 4
 dataset = "Set5"  # Set5, Set14, BSD100, Urban100, Manga109
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SwinIR.from_pretrained(scale=scale).eval().to(device)
-Evaluator(dataset, scale=scale).run(model.inference)
+evaluator = Evaluator(dataset, scale=scale)
+psnr, ssim = evaluator(model.inference)
 ```
 
 ### Benchmark

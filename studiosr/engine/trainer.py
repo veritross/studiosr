@@ -146,9 +146,9 @@ class Trainer:
             if self.iter_num % self.log_interval == 0 and master_process:
                 if self.evaluator:
                     raw_model = raw_model.eval()
-                    psnr, ssim = self.evaluator.run(raw_model.inference, log=False)
+                    psnr, ssim = self.evaluator.run(raw_model.inference)
                     raw_model = raw_model.train()
-                    print(f" Iterations = {self.iter_num:<8} PSNR {psnr}")
+                    print(f" Iterations = {self.iter_num:<8}  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}")
                 torch.save(
                     raw_model.state_dict(),
                     os.path.join(self.ckpt_path, "ckpt_%d.pth" % (self.iter_num)),
