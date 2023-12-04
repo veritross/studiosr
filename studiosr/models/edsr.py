@@ -28,6 +28,21 @@ class MeanShift(nn.Conv2d):
             p.requires_grad = False
 
 
+class Upsampler(nn.Sequential):
+    def __init__(self, scale: int, n_feats: int) -> None:
+        m = []
+        if (scale & (scale - 1)) == 0:  # Is scale = 2^n?
+            for _ in range(int(math.log(scale, 2))):
+                m.append(conv2d(n_feats, 4 * n_feats, 3))
+                m.append(nn.PixelShuffle(2))
+        elif scale == 3:
+            m.append(conv2d(n_feats, 9 * n_feats, 3))
+            m.append(nn.PixelShuffle(3))
+        else:
+            raise NotImplementedError
+        super().__init__(*m)
+
+
 class ResBlock(nn.Module):
     def __init__(self, n_feats: int, kernel_size: int, res_scale: float = 1.0) -> None:
         super().__init__()
@@ -43,21 +58,6 @@ class ResBlock(nn.Module):
         res = self.body(x).mul(self.res_scale)
         res += x
         return res
-
-
-class Upsampler(nn.Sequential):
-    def __init__(self, scale: int, n_feats: int) -> None:
-        m = []
-        if (scale & (scale - 1)) == 0:  # Is scale = 2^n?
-            for _ in range(int(math.log(scale, 2))):
-                m.append(conv2d(n_feats, 4 * n_feats, 3))
-                m.append(nn.PixelShuffle(2))
-        elif scale == 3:
-            m.append(conv2d(n_feats, 9 * n_feats, 3))
-            m.append(nn.PixelShuffle(3))
-        else:
-            raise NotImplementedError
-        super().__init__(*m)
 
 
 class EDSR(BaseModule):
