@@ -46,12 +46,11 @@ class Upsampler(nn.Sequential):
 class ResBlock(nn.Module):
     def __init__(self, n_feats: int, kernel_size: int, res_scale: float = 1.0) -> None:
         super().__init__()
-        m = []
-        for i in range(2):
-            m.append(conv2d(n_feats, n_feats, kernel_size))
-            if i == 0:
-                m.append(nn.ReLU(True))
-        self.body = nn.Sequential(*m)
+        self.body = nn.Sequential(
+            conv2d(n_feats, n_feats, kernel_size),
+            nn.ReLU(True),
+            conv2d(n_feats, n_feats, kernel_size),
+        )
         self.res_scale = res_scale
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
