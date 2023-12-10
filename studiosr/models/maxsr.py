@@ -7,7 +7,7 @@ from einops.layers.torch import Rearrange, Reduce
 from torch import einsum, nn
 from torch.nn.functional import pad
 
-from .base import BaseModule
+from studiosr.models.common import BaseModule
 
 # helpers
 

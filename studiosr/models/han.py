@@ -3,8 +3,8 @@ from typing import Dict
 import torch
 import torch.nn as nn
 
-from .base import BaseModule
-from .rcan import MeanShift, ResidualGroup, Upsampler, conv2d
+from studiosr.models.common import BaseModule, MeanShift, Upsampler, conv2d
+from studiosr.models.rcan import ResidualGroup
 
 
 class LAM_Module(nn.Module):

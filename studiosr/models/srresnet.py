@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from .base import BaseModule
+from studiosr.models.common import BaseModule
 
 
 class _ResidualConvBlock(nn.Module):
