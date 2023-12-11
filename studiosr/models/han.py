@@ -1,5 +1,7 @@
+import os
 from typing import Dict
 
+import gdown
 import torch
 import torch.nn as nn
 
@@ -116,9 +118,6 @@ class HAN(BaseModule):
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> nn.Module:
-        import os
-
-        import gdown
 
         file_ids = {
             2: "12NhWDksOXiVnGw-Zbv6Y20J2DnRRKkJ2",

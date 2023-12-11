@@ -1,5 +1,8 @@
+import os
+import zipfile
 from typing import Dict
 
+import gdown
 import torch
 import torch.nn as nn
 
@@ -83,10 +86,6 @@ class RCAN(BaseModule):
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> nn.Module:
-        import os
-        import zipfile
-
-        import gdown
 
         pretrained_dir = "pretrained"
         rcan_dir = "models_ECCV2018RCAN"

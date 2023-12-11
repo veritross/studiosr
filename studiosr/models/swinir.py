@@ -1,39 +1,34 @@
 import os
 from itertools import repeat
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from timm.models.layers import DropPath, trunc_normal_
 
-from studiosr import download_weights
-from studiosr.models.common import BaseModule, Mlp, Upsampler
-
-
-def window_partition(x, window_size):
-    B, H, W, C = x.shape
-    x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
-    return windows
-
-
-def window_reverse(windows, window_size, H, W):
-    B = int(windows.shape[0] / (H * W / window_size / window_size))
-    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
-    x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
-    return x
+from studiosr.models.common import (
+    BaseModule,
+    Mlp,
+    PatchEmbed,
+    PatchUnEmbed,
+    Upsampler,
+    calculate_mask,
+    check_image_size,
+    window_partition,
+    window_reverse,
+)
+from studiosr.utils import download_weights
 
 
 class WindowAttention(nn.Module):
     def __init__(
         self,
-        dim,
-        window_size,
-        num_heads,
-        attn_drop=0.0,
-        proj_drop=0.0,
-    ):
+        dim: int,
+        window_size: int,
+        num_heads: int,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+    ) -> None:
         super().__init__()
         self.dim = dim
         self.window_size = window_size  # Wh, Ww
@@ -68,14 +63,10 @@ class WindowAttention(nn.Module):
         trunc_normal_(self.relative_position_bias_table, std=0.02)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x, mask=None):
+    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         B_, N, C = x.shape
         qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        q, k, v = (
-            qkv[0],
-            qkv[1],
-            qkv[2],
-        )  # make torchscript happy (cannot use tensor as tuple)
+        q, k, v = qkv[0], qkv[1], qkv[2]
 
         q = q * self.qkv_scale
         attn = q @ k.transpose(-2, -1)
@@ -92,10 +83,8 @@ class WindowAttention(nn.Module):
             nW = mask.shape[0]
             attn = attn.view(B_ // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
             attn = attn.view(-1, self.num_heads, N, N)
-            attn = self.softmax(attn)
-        else:
-            attn = self.softmax(attn)
 
+        attn = self.softmax(attn)
         attn = self.attn_drop(attn)
 
         x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
@@ -107,15 +96,15 @@ class WindowAttention(nn.Module):
 class SwinTransformerBlock(nn.Module):
     def __init__(
         self,
-        dim,
-        num_heads,
-        window_size=7,
-        shift_size=0,
-        mlp_ratio=4.0,
-        drop=0.0,
-        attn_drop=0.0,
-        drop_path=0.0,
-    ):
+        dim: int,
+        num_heads: int,
+        window_size: int,
+        shift_size: int = 0,
+        mlp_ratio: float = 4.0,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        drop_path: float = 0.0,
+    ) -> None:
         super().__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -142,34 +131,7 @@ class SwinTransformerBlock(nn.Module):
             drop=drop,
         )
 
-    def calculate_mask(self, x_size):
-        # calculate attention mask for SW-MSA
-        H, W = x_size
-        img_mask = torch.zeros((1, H, W, 1))  # 1 H W 1
-        h_slices = (
-            slice(0, -self.window_size),
-            slice(-self.window_size, -self.shift_size),
-            slice(-self.shift_size, None),
-        )
-        w_slices = (
-            slice(0, -self.window_size),
-            slice(-self.window_size, -self.shift_size),
-            slice(-self.shift_size, None),
-        )
-        cnt = 0
-        for h in h_slices:
-            for w in w_slices:
-                img_mask[:, h, w, :] = cnt
-                cnt += 1
-
-        mask_windows = window_partition(img_mask, self.window_size)  # nW, window_size, window_size, 1
-        mask_windows = mask_windows.view(-1, self.window_size * self.window_size)
-        attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
-        attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
-
-        return attn_mask
-
-    def forward(self, x, x_size):
+    def forward(self, x: torch.Tensor, x_size: List[int]) -> torch.Tensor:
         H, W = x_size
         B, L, C = x.shape
         # assert L == H * W, "input feature has wrong size"
@@ -178,35 +140,25 @@ class SwinTransformerBlock(nn.Module):
         x = self.norm1(x)
         x = x.view(B, H, W, C)
 
-        # cyclic shift
-        if self.shift_size > 0:
-            shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
-        else:
-            shifted_x = x
+        # cyclic
+        shifted_x = torch.roll(x, (-self.shift_size, -self.shift_size), (1, 2)) if self.shift_size > 0 else x
 
         # partition windows
         x_windows = window_partition(shifted_x, self.window_size)  # nW*B, window_size, window_size, C
         x_windows = x_windows.view(-1, self.window_size * self.window_size, C)  # nW*B, window_size*window_size, C
 
         # W-MSA/SW-MSA (to be compatible for testing on images whose shapes are the multiple of window size
-        attn_windows = self.attn(x_windows, mask=self.calculate_mask(x_size).to(x.device))
+        attn_windows = self.attn(x_windows, mask=calculate_mask(x_size, self.window_size, self.shift_size).to(x.device))
 
         # merge windows
         attn_windows = attn_windows.view(-1, self.window_size, self.window_size, C)
         shifted_x = window_reverse(attn_windows, self.window_size, H, W)  # B H' W' C
 
         # reverse cyclic shift
-        if self.shift_size > 0:
-            x = torch.roll(
-                shifted_x,
-                shifts=(self.shift_size, self.shift_size),
-                dims=(1, 2),
-            )
-        else:
-            x = shifted_x
-        x = x.view(B, H * W, C)
+        x = torch.roll(shifted_x, (self.shift_size, self.shift_size), (1, 2)) if self.shift_size > 0 else shifted_x
 
         # FFN
+        x = x.view(B, H * W, C)
         x = shortcut + self.drop_path(x)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
 
@@ -216,15 +168,15 @@ class SwinTransformerBlock(nn.Module):
 class BasicLayer(nn.Module):
     def __init__(
         self,
-        dim,
-        depth,
-        num_heads,
-        window_size,
-        mlp_ratio=4.0,
-        drop=0.0,
-        attn_drop=0.0,
-        drop_path=0.0,
-    ):
+        dim: int,
+        depth: int,
+        num_heads: int,
+        window_size: int,
+        mlp_ratio: float = 4.0,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        drop_path: float = 0.0,
+    ) -> None:
         super().__init__()
         self.dim = dim
         self.depth = depth
@@ -246,7 +198,7 @@ class BasicLayer(nn.Module):
             ]
         )
 
-    def forward(self, x, x_size):
+    def forward(self, x: torch.Tensor, x_size: List[int]) -> torch.Tensor:
         for blk in self.blocks:
             x = blk(x, x_size)
         return x
@@ -255,15 +207,15 @@ class BasicLayer(nn.Module):
 class RSTB(nn.Module):
     def __init__(
         self,
-        dim,
-        depth,
-        num_heads,
-        window_size,
-        mlp_ratio=4.0,
-        drop=0.0,
-        attn_drop=0.0,
-        drop_path=0.0,
-    ):
+        dim: int,
+        depth: int,
+        num_heads: int,
+        window_size: int,
+        mlp_ratio: float = 4.0,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        drop_path: float = 0.0,
+    ) -> None:
         super().__init__()
         self.dim = dim
         self.residual_group = BasicLayer(
@@ -280,32 +232,8 @@ class RSTB(nn.Module):
         self.patch_embed = PatchEmbed(embed_dim=dim)
         self.patch_unembed = PatchUnEmbed(embed_dim=dim)
 
-    def forward(self, x, x_size):
+    def forward(self, x: torch.Tensor, x_size: List[int]) -> torch.Tensor:
         return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x, x_size), x_size))) + x
-
-
-class PatchEmbed(nn.Module):
-    def __init__(self, embed_dim=96, norm_layer=None):
-        super().__init__()
-        self.embed_dim = embed_dim
-        self.norm = None if norm_layer is None else norm_layer(embed_dim)
-
-    def forward(self, x):
-        x = x.flatten(2).transpose(1, 2)
-        if self.norm is not None:
-            x = self.norm(x)
-        return x
-
-
-class PatchUnEmbed(nn.Module):
-    def __init__(self, embed_dim=96):
-        super().__init__()
-        self.embed_dim = embed_dim
-
-    def forward(self, x, x_size):
-        B, HW, C = x.shape
-        x = x.transpose(1, 2).view(B, self.embed_dim, x_size[0], x_size[1])
-        return x
 
 
 class SwinIR(BaseModule):
@@ -386,23 +314,16 @@ class SwinIR(BaseModule):
 
         self.apply(self._init_weights)
 
-    def _init_weights(self, m):
+    def _init_weights(self, m: nn.Module) -> None:
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=0.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
+            if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def check_image_size(self, x):
-        _, _, h, w = x.size()
-        mod_pad_h = (self.window_size - h % self.window_size) % self.window_size
-        mod_pad_w = (self.window_size - w % self.window_size) % self.window_size
-        x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), "reflect")
-        return x
-
-    def forward_features(self, x):
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
         x_size = (x.shape[2], x.shape[3])
         x = self.patch_embed(x)
         x = self.pos_drop(x)
@@ -412,12 +333,11 @@ class SwinIR(BaseModule):
 
         x = self.norm(x)  # B L C
         x = self.patch_unembed(x, x_size)
-
         return x
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         H, W = x.shape[2:]
-        x = self.check_image_size(x)
+        x = check_image_size(x, self.window_size)
 
         self.mean = self.mean.type_as(x)
         x = (x - self.mean) * self.img_range
@@ -455,25 +375,24 @@ class SwinIR(BaseModule):
         light: bool = False,
         dataset: str = "DIV2K",
         pretrained: bool = True,
-    ):
+    ) -> nn.Module:
         assert scale in [2, 3, 4, 8]
         assert dataset in ["DIV2K", "DF2K"]
 
         config = {"scale": scale}
-        if not light:
-            img_size = 64 if dataset == "DF2K" else 48
-            file_name = f"001_classicalSR_{dataset}_s{img_size}w8_SwinIR-M_x{scale}.pth"
-        else:
-            img_size = 64
+        img_size = 64 if dataset == "DF2K" else 48
+        task = "001_classicalSR"
+        if light:
             config["depths"] = [6, 6, 6, 6]
             config["embed_dim"] = 60
             config["num_heads"] = [6, 6, 6, 6]
             config["upsampler"] = "pixelshuffledirect"
-            file_name = f"002_lightweightSR_{dataset}_s{img_size}w8_SwinIR-S_x{scale}.pth"
+            task = "002_lightweightSR"
 
         model = SwinIR(**config)
 
         if pretrained:
+            file_name = f"{task}_{dataset}_s{img_size}w8_SwinIR-M_x{scale}.pth"
             model_url = "https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/"
             model_dir = "pretrained"
             os.makedirs(model_dir, exist_ok=True)
