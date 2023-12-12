@@ -3,7 +3,7 @@ import math
 import torch
 from torch import nn
 
-from .base import BaseModule
+from studiosr.models.common import BaseModule
 
 
 class ESPCN(BaseModule):

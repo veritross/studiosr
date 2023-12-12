@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from studiosr.models import HAN
+from studiosr.models import SwinIR
 
 
 @pytest.mark.parametrize(
@@ -17,9 +17,9 @@ from studiosr.models import HAN
         (8, (1, 3, 12, 12), (1, 3, 96, 96)),
     ],
 )
-def test_shape_of_han(scale, input_shape, output_shape):
+def test_shape_of_swinir(scale, input_shape, output_shape):
     n_colors = input_shape[1]
-    model = HAN(scale=scale, n_colors=n_colors)
+    model = SwinIR(scale=scale, n_colors=n_colors)
     x = torch.randn(*input_shape)
     y = model(x)
     assert y.shape == output_shape

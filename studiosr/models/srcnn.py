@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from .base import BaseModule
+from studiosr.models.common import BaseModule
 
 
 class SRCNN(BaseModule):
@@ -38,7 +38,7 @@ class SRCNN(BaseModule):
         img_range: float = 1.0,
         residual: bool = False,
     ) -> None:
-        super(SRCNN, self).__init__()
+        super().__init__()
 
         self.img_range = img_range
         self.residual = residual

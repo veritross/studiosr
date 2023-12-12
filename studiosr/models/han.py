@@ -1,10 +1,12 @@
+import os
 from typing import Dict
 
+import gdown
 import torch
 import torch.nn as nn
 
-from .base import BaseModule
-from .rcan import MeanShift, ResidualGroup, Upsampler, conv2d
+from studiosr.models.common import BaseModule, MeanShift, Upsampler, conv2d
+from studiosr.models.rcan import ResidualGroup
 
 
 class LAM_Module(nn.Module):
@@ -116,9 +118,6 @@ class HAN(BaseModule):
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> nn.Module:
-        import os
-
-        import gdown
 
         file_ids = {
             2: "12NhWDksOXiVnGw-Zbv6Y20J2DnRRKkJ2",

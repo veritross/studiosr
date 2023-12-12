@@ -1,6 +1,6 @@
 import os
 import platform
-from typing import List
+from typing import Callable, List
 
 import torch
 import torch.distributed as dist
@@ -41,6 +41,7 @@ class Trainer:
         max_iters: int = 500000,
         gamma: float = 0.5,
         milestones: List[int] = [250000, 400000, 450000, 475000],
+        loss_function: Callable = nn.L1Loss(),
         log_interval: int = 1000,
         ckpt_path: str = "checkpoints",
         bfloat16: bool = True,
@@ -68,7 +69,7 @@ class Trainer:
             weight_decay=weight_decay,
         )
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=milestones, gamma=gamma)
-        self.criterion = nn.L1Loss()
+        self.criterion = loss_function
 
         self.iter_num = 0
         self.iter_time = 0.0

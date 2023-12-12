@@ -1,27 +1,13 @@
+import os
+import zipfile
 from typing import Dict
 
+import gdown
 import torch
 import torch.nn as nn
 
-from .base import BaseModule
-from .edsr import MeanShift, Upsampler, conv2d
-
-
-class CALayer(nn.Module):
-    def __init__(self, channel: int, reduction: int = 16) -> None:
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.conv_du = nn.Sequential(
-            nn.Conv2d(channel, channel // reduction, 1),
-            nn.ReLU(True),
-            nn.Conv2d(channel // reduction, channel, 1),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y = self.avg_pool(x)
-        y = self.conv_du(y)
-        return x * y
+from studiosr.models.common import BaseModule, ChannelAttention, MeanShift, Upsampler, conv2d
+from studiosr.utils import get_device
 
 
 class RCAB(nn.Module):
@@ -31,7 +17,7 @@ class RCAB(nn.Module):
             conv2d(n_feat, n_feat, kernel_size),
             nn.ReLU(True),
             conv2d(n_feat, n_feat, kernel_size),
-            CALayer(n_feat, reduction),
+            ChannelAttention(n_feat, reduction),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -100,10 +86,6 @@ class RCAN(BaseModule):
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> nn.Module:
-        import os
-        import zipfile
-
-        import gdown
 
         pretrained_dir = "pretrained"
         rcan_dir = "models_ECCV2018RCAN"
@@ -118,5 +100,5 @@ class RCAN(BaseModule):
             os.remove(path)
         model_path = os.path.join(rcan_path, f"RCAN_BIX{scale}.pt")
         model = RCAN(scale=scale, img_range=255.0)
-        model.load_state_dict(torch.load(model_path), True)
+        model.load_state_dict(torch.load(model_path, map_location=get_device()), False)
         return model

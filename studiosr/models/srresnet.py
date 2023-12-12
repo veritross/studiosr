@@ -1,15 +1,16 @@
 import math
+from typing import Dict
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-from .base import BaseModule
+from studiosr.models.common import BaseModule
 
 
 class _ResidualConvBlock(nn.Module):
     def __init__(self, channels: int) -> None:
-        super(_ResidualConvBlock, self).__init__()
+        super().__init__()
         self.rcb = nn.Sequential(
             nn.Conv2d(channels, channels, (3, 3), (1, 1), (1, 1), bias=False),
             nn.BatchNorm2d(channels),
@@ -20,17 +21,14 @@ class _ResidualConvBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-
         x = self.rcb(x)
-
         x = torch.add(x, identity)
-
         return x
 
 
 class _UpsampleBlock(nn.Module):
     def __init__(self, channels: int, upscale_factor: int) -> None:
-        super(_UpsampleBlock, self).__init__()
+        super().__init__()
         self.upsample_block = nn.Sequential(
             nn.Conv2d(channels, channels * upscale_factor * upscale_factor, (3, 3), (1, 1), (1, 1)),
             nn.PixelShuffle(upscale_factor),
@@ -39,7 +37,6 @@ class _UpsampleBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.upsample_block(x)
-
         return x
 
 
@@ -101,10 +98,6 @@ class SRResNet(BaseModule):
                 nn.init.constant_(module.weight, 1)
 
     def forward(self, x: Tensor) -> Tensor:
-        return self._forward_impl(x)
-
-    # Support torch.script function
-    def _forward_impl(self, x: Tensor) -> Tensor:
         self.mean = self.mean.type_as(x)
         x = (x - self.mean) * self.img_range
 
@@ -117,3 +110,17 @@ class SRResNet(BaseModule):
 
         x = x / self.img_range + self.mean
         return x
+
+    def get_training_config(self) -> Dict:
+        training_config = dict(
+            batch_size=16,
+            learning_rate=0.0001,
+            beta1=0.9,
+            beta2=0.99,
+            weight_decay=0.0,
+            max_iters=1000000,
+            milestones=[],
+            loss_function=nn.MSELoss(),
+            bfloat16=False,
+        )
+        return training_config
