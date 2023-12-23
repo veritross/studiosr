@@ -7,3 +7,4 @@ from studiosr.models.rcan import RCAN
 from studiosr.models.srcnn import SRCNN
 from studiosr.models.srresnet import SRResNet
 from studiosr.models.swinir import SwinIR
+from studiosr.models.swinfir import SwinFIR
