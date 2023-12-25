@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-from timm.models.layers import DropPath, trunc_normal_
+from timm.layers import DropPath, trunc_normal_
 
 from studiosr.models.common import (
     BaseModule,
@@ -215,6 +215,7 @@ class RSTB(nn.Module):
         drop: float = 0.0,
         attn_drop: float = 0.0,
         drop_path: float = 0.0,
+        resi_connection: Optional[nn.Module] = None,
     ) -> None:
         super().__init__()
         self.dim = dim
@@ -228,7 +229,7 @@ class RSTB(nn.Module):
             attn_drop=attn_drop,
             drop_path=drop_path,
         )
-        self.conv = nn.Conv2d(dim, dim, 3, 1, 1)
+        self.conv = resi_connection if resi_connection else nn.Conv2d(dim, dim, 3, 1, 1)
         self.patch_embed = PatchEmbed(embed_dim=dim)
         self.patch_unembed = PatchUnEmbed(embed_dim=dim)
 
@@ -251,7 +252,8 @@ class SwinIR(BaseModule):
         attn_drop_rate: float = 0.0,
         drop_path_rate: float = 0.1,
         upsampler: str = "pixelshuffle",
-    ):
+        resi_connection: Optional[nn.Module] = None,
+    ) -> None:
         super().__init__()
         num_in_ch = n_colors
         num_out_ch = n_colors
@@ -293,6 +295,7 @@ class SwinIR(BaseModule):
                 drop=drop_rate,
                 attn_drop=attn_drop_rate,
                 drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],  # no impact on SR results
+                resi_connection=resi_connection,
             )
             self.layers.append(layer)
         self.norm = nn.LayerNorm(self.num_features)
