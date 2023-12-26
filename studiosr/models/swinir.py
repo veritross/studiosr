@@ -229,7 +229,7 @@ class RSTB(nn.Module):
             attn_drop=attn_drop,
             drop_path=drop_path,
         )
-        self.conv = resi_connection if resi_connection else nn.Conv2d(dim, dim, 3, 1, 1)
+        self.conv = resi_connection(dim) if resi_connection else nn.Conv2d(dim, dim, 3, 1, 1)
         self.patch_embed = PatchEmbed(embed_dim=dim)
         self.patch_unembed = PatchUnEmbed(embed_dim=dim)
 

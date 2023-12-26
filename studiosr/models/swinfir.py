@@ -109,7 +109,7 @@ class SwinFIR(SwinIR):
             attn_drop_rate=attn_drop_rate,
             drop_path_rate=drop_path_rate,
             upsampler=upsampler,
-            resi_connection=SFB(embed_dim),
+            resi_connection=SFB,
         )
         self.conv_after_body = SFB(embed_dim)
 
