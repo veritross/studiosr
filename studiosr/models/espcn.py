@@ -3,7 +3,7 @@ import math
 import torch
 from torch import nn
 
-from studiosr.models.common import BaseModule
+from studiosr.models.common import BaseModule, Normalizer
 
 
 class ESPCN(BaseModule):
@@ -19,11 +19,7 @@ class ESPCN(BaseModule):
         out_channels = int(n_colors * (scale**2))
 
         self.img_range = img_range
-        if n_colors == 3:
-            rgb_mean = (0.4488, 0.4371, 0.4040)
-            self.mean = torch.Tensor(rgb_mean).view(1, 3, 1, 1)
-        else:
-            self.mean = torch.zeros(1, 1, 1, 1)
+        self.normalizer = Normalizer()
 
         # Feature mapping
         self.feature_maps = nn.Sequential(
@@ -52,11 +48,10 @@ class ESPCN(BaseModule):
                     nn.init.zeros_(module.bias.data)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self.mean = self.mean.type_as(x)
-        x = (x - self.mean) * self.img_range
+        x = self.normalizer.normalize(x)
 
         x = self.feature_maps(x)
         x = self.sub_pixel(x)
 
-        x = x / self.img_range + self.mean
+        x = self.normalizer.unnormalize(x)
         return x

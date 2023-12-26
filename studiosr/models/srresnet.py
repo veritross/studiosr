@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from studiosr.models.common import BaseModule
+from studiosr.models.common import BaseModule, Normalizer
 
 
 class _ResidualConvBlock(nn.Module):
@@ -52,11 +52,7 @@ class SRResNet(BaseModule):
         super().__init__()
 
         self.img_range = img_range
-        if n_colors == 3:
-            rgb_mean = (0.4488, 0.4371, 0.4040)
-            self.mean = torch.Tensor(rgb_mean).view(1, 3, 1, 1)
-        else:
-            self.mean = torch.zeros(1, 1, 1, 1)
+        self.normalizer = Normalizer()
 
         # Low frequency information extraction layer
         self.conv1 = nn.Sequential(
@@ -98,8 +94,7 @@ class SRResNet(BaseModule):
                 nn.init.constant_(module.weight, 1)
 
     def forward(self, x: Tensor) -> Tensor:
-        self.mean = self.mean.type_as(x)
-        x = (x - self.mean) * self.img_range
+        x = self.normalizer.normalize(x)
 
         conv1 = self.conv1(x)
         x = self.trunk(conv1)
@@ -108,7 +103,7 @@ class SRResNet(BaseModule):
         x = self.upsampling(x)
         x = self.conv3(x)
 
-        x = x / self.img_range + self.mean
+        x = self.normalizer.unnormalize(x)
         return x
 
     def get_training_config(self) -> Dict:

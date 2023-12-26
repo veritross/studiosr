@@ -143,6 +143,20 @@ class PatchUnEmbed(nn.Module):
         return x
 
 
+class Normalizer(nn.Module):
+    def __init__(self, img_range: float = 1.0, img_mean: List[float] = [0.4488, 0.4371, 0.4040]):
+        super().__init__()
+        self.img_range = img_range
+        self.img_mean = torch.Tensor(img_mean).view(1, 3, 1, 1)
+
+    def normalize(self, x: torch.Tensor) -> torch.Tensor:
+        self.img_mean = self.img_mean.type_as(x)
+        return x / self.img_range - self.img_mean
+
+    def unnormalize(self, x: torch.Tensor) -> torch.Tensor:
+        return (x + self.img_mean) * self.img_range
+
+
 def window_partition(x: torch.Tensor, window_size: List[int]) -> torch.Tensor:
     B, H, W, C = x.shape
     x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)

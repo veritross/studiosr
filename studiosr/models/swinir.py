@@ -9,6 +9,7 @@ from timm.layers import DropPath, trunc_normal_
 from studiosr.models.common import (
     BaseModule,
     Mlp,
+    Normalizer,
     PatchEmbed,
     PatchUnEmbed,
     Upsampler,
@@ -259,14 +260,10 @@ class SwinIR(BaseModule):
         num_out_ch = n_colors
         num_feat = 64
         self.img_range = img_range
-        if n_colors == 3:
-            rgb_mean = (0.4488, 0.4371, 0.4040)
-            self.mean = torch.Tensor(rgb_mean).view(1, 3, 1, 1)
-        else:
-            self.mean = torch.zeros(1, 1, 1, 1)
         self.scale = scale
         self.upsampler = upsampler
         self.window_size = window_size
+        self.normalizer = Normalizer()
 
         self.conv_first = nn.Conv2d(num_in_ch, embed_dim, 3, 1, 1)
 
@@ -342,8 +339,7 @@ class SwinIR(BaseModule):
         H, W = x.shape[2:]
         x = check_image_size(x, self.window_size)
 
-        self.mean = self.mean.type_as(x)
-        x = (x - self.mean) * self.img_range
+        x = self.normalizer.normalize(x)
 
         x = self.conv_first(x)
         x = self.conv_after_body(self.forward_features(x)) + x
@@ -355,7 +351,7 @@ class SwinIR(BaseModule):
             # for lightweight SR
             x = self.upsample(x)
 
-        x = x / self.img_range + self.mean
+        x = self.normalizer.unnormalize(x)
         return x[:, :, : H * self.scale, : W * self.scale]
 
     def get_training_config(self) -> Dict:

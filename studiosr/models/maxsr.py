@@ -7,7 +7,7 @@ from einops.layers.torch import Rearrange, Reduce
 from torch import einsum, nn
 from torch.nn.functional import pad
 
-from studiosr.models.common import BaseModule
+from studiosr.models.common import BaseModule, Normalizer
 
 # helpers
 
@@ -396,11 +396,7 @@ class MaxSR(BaseModule):
         self.adaptive = adaptive
         num_stages = len(depth)
         self.img_range = img_range
-        if n_colors == 3:
-            rgb_mean = (0.4488, 0.4371, 0.4040)
-            self.mean = torch.Tensor(rgb_mean).view(1, 3, 1, 1)
-        else:
-            self.mean = torch.zeros(1, 1, 1, 1)
+        self.normalizer = Normalizer()
 
         # convolutional stem
 
@@ -437,8 +433,7 @@ class MaxSR(BaseModule):
         if not self.adaptive:
             x = self.check_image_size(x)
 
-        self.mean = self.mean.type_as(x)
-        x = (x - self.mean) * self.img_range
+        x = self.normalizer.normalize(x)
 
         # Convolutional stem
         Fm1 = self.conv_stem_first(x)
@@ -470,7 +465,7 @@ class MaxSR(BaseModule):
         x = self.Upsample(x)
         x = self.conv_last(x)
 
-        x = x / self.img_range + self.mean
+        x = self.normalizer.unnormalize(x)
 
         if not self.adaptive:
             x = x[:, :, : H * self.upscale, : W * self.upscale]

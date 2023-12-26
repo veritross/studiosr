@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from studiosr.models.common import BaseModule
+from studiosr.models.common import BaseModule, Normalizer
 
 
 class SRCNN(BaseModule):
@@ -42,11 +42,7 @@ class SRCNN(BaseModule):
 
         self.img_range = img_range
         self.residual = residual
-        if n_colors == 3:
-            rgb_mean = (0.4488, 0.4371, 0.4040)
-            self.mean = torch.Tensor(rgb_mean).view(1, 3, 1, 1)
-        else:
-            self.mean = torch.zeros(1, 1, 1, 1)
+        self.normalizer = Normalizer()
 
         self.upsample = nn.Upsample(scale_factor=scale, mode="bicubic")
         self.layers = nn.Sequential(
@@ -58,13 +54,12 @@ class SRCNN(BaseModule):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self.mean = self.mean.type_as(x)
-        x = (x - self.mean) * self.img_range
+        x = self.normalizer.normalize(x)
 
         u = self.upsample(x)
         x = self.layers(u)
         if self.residual:
             x = x + u
 
-        x = x / self.img_range + self.mean
+        x = self.normalizer.unnormalize(x)
         return x
