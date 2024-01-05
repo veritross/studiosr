@@ -1,0 +1,28 @@
+name: Unit Tests
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    test:
+        name: Test
+        runs-on: ubuntu-20.04
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v2
+            - name: Set up Python 3.8
+              uses: actions/setup-python@v2
+              with:
+                  python-version: 3.8
+            - name: Install StudioSR
+              run: pip install -e .
+            - name: Install Dependencies
+              run: pip install pytest
+            - name: Run Tests
+              run: python -m pytest
