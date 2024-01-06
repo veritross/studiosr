@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="studiosr",
-    version="0.0.1",
+    version="0.1.0",
     author="veritross",
     description="Python library to accelerate super-resolution research",
     license="MIT",
@@ -20,20 +20,20 @@ setup(
         "License :: OSI Approved :: MIT License",
     ],
     install_requires=[
-        "einops",
-        "gdown",
-        "opencv-python",
-        "scikit-image",
-        "timm",
-        "torch",
+        "einops>=0.6.0",
+        "gdown>=4.6.0",
+        "opencv-python>=4.7.0",
+        "scikit-image>=0.21.0",
+        "timm>=0.9.0",
+        "torch>=1.12.0",
     ],
     extras_require={
         "linting": [
-            "pre-commit",
+            "pre-commit>=3.5.0",
         ],
         "testing": [
-            "pytest",
-            "pytest-xdist",
+            "pytest>=7.4.0",
+            "pytest-xdist>=3.5.0",
         ],
     },
     python_requires=">=3.8",

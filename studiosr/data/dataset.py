@@ -1,9 +1,9 @@
 import os
 
-import cv2
 from torch.utils.data import Dataset
 
 from studiosr.data import transforms as T
+from studiosr.utils import imread
 
 IMAGE_EXTENSIONS = [
     ".bmp",
@@ -104,10 +104,8 @@ class PairedImageDataset(Dataset):
         file = self.files[idx]
         lq_path = os.path.join(self.lq_path, file)
         gt_path = os.path.join(self.gt_path, file)
-        lq = cv2.imread(lq_path, cv2.IMREAD_COLOR)
-        gt = cv2.imread(gt_path, cv2.IMREAD_COLOR)
-        lq = cv2.cvtColor(lq, cv2.COLOR_BGR2RGB)
-        gt = cv2.cvtColor(gt, cv2.COLOR_BGR2RGB)
+        lq = imread(lq_path)
+        gt = imread(gt_path)
         return lq, gt
 
 

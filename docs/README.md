@@ -1,5 +1,10 @@
 ## Examples
 
+### Pipeline Architecture
+<p align="center">
+  <img width="800" src="../assets/Pipeline_arch.png">
+</p>
+
 ### Train
 ```python
 from studiosr import Evaluator, Trainer

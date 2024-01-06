@@ -3,47 +3,33 @@ StudioSR is a Pytorch library providing implementations of training and evaluati
 
 
 ## Installation
-The current recommended way to install StudioSR is from source.
 
-### From source
+### From PyPI
+```bash
+pip install studiosr
+```
+
+### From source (Editable)
 ```bash
 git clone https://github.com/veritross/studiosr.git
 cd studiosr
 python3 -m pip install -e .
 ```
-Don't forget the `.` at the end!
 
 
 ## Documentation
 Documentation along with a quick start guide can be found in the [docs/](./docs/) directory.
 
+### Quick Example
+```python
+from studiosr.models import SwinIR
+from studiosr.utils import imread, imwrite
 
-## Pipeline Architecture
-<p align="center">
-  <img width="800" src="assets/Pipeline_arch.png">
-</p>
-
-
-## File Directory Structure
-├───studiosr  
-│   ├─data  
-│   │ ├───dataset.py  
-│   │ ├───transforms.py  
-│   │ └───...  
-│   ├─engine  
-│   │ ├───trainer.py  
-│   │ ├───evaluator.py  
-│   │ └───...  
-│   ├─models  
-│   │ ├───srcnn.py  
-│   │ └───...  
-│   ├─utils  
-│   │ ├───tools.py  
-│   │ └───...  
-├───scripts  
-│   ├───extract_subimages.py  
-│   └───...  
-
+model = SwinIR.from_pretrained(scale=4).eval()
+image = imread("image.png")
+upscaled = model.inference(image)
+imwrite("upscaled.png", upscaled)
+```
 
 ## License
 StudioSR is an open-source library under the **MIT license**. 
