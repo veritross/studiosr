@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="studiosr",
-    version="0.1.0",
+    version="0.1.1",
     author="veritross",
     description="Python library to accelerate super-resolution research",
     license="MIT",
@@ -21,7 +21,7 @@ setup(
     ],
     install_requires=[
         "einops>=0.6.0",
-        "gdown>=4.6.0",
+        "gdown==4.6.0",
         "opencv-python>=4.7.0",
         "scikit-image>=0.21.0",
         "timm>=0.9.0",
