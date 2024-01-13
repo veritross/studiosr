@@ -2,7 +2,7 @@
 
 ### Pipeline Architecture
 <p align="center">
-  <img width="800" src="../assets/Pipeline_arch.png">
+  <img width="800" src="../assets/Pipeline_arch.svg">
 </p>
 
 ### Train
@@ -60,10 +60,3 @@ for model_class in [RCAN, HAN, SwinIR, HAT]:
         print(f"Benchmark -> {model_class.__name__}")
         Evaluator.benchmark(model.inference, scale=scale)
 ```
-
-## Models
-
-### MaxSR: Image Super-Resolution Using Improved MaxViT
-<p align="center">
-  <img width="800" src="../assets/MaxSR_arch.png">
-</p>
