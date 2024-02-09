@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from studiosr.data import DataHandler
 from studiosr.engine import Evaluator
 from studiosr.models.common import BaseModule
-from studiosr.utils import get_device
+from studiosr.utils import Logger, get_device
 
 
 class Trainer:
@@ -84,6 +84,9 @@ class Trainer:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DDP(model, device_ids=[device], output_device=device)
 
+        if data_handler.is_main_process:
+            logger = Logger(os.path.join(self.ckpt_path, "train.log"))
+
         best_psnr = 0.0
         model = model.train()
         while data_handler.iterations < self.max_iters:
@@ -101,11 +104,13 @@ class Trainer:
             self.scheduler.step()
 
             iterations = data_handler.iterations
-            print(f"\r Iterations = {iterations:<8}", end="")
+            print(f" Iterations = {iterations:<8}", end="\r")
             if iterations % self.eval_interval == 0 and data_handler.is_main_process:
                 psnr, ssim = self.evaluate()
-                print(f"  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}")
+                log = f" Iterations = {iterations:<8}  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}"
+                logger.info(log)
                 if best_psnr <= psnr:
+                    print(log, end="\r")
                     best_psnr = psnr
                     self.save("best.pth")
 

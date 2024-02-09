@@ -1,4 +1,6 @@
+import logging
 import os
+from typing import Optional
 from urllib import request
 
 import cv2
@@ -6,7 +8,7 @@ import numpy as np
 import torch
 
 
-def get_device():
+def get_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -30,3 +32,46 @@ def imwrite(path: str, image: np.ndarray) -> bool:
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     result = cv2.imwrite(path, image)
     return result
+
+
+class Logger:
+    def __init__(
+        self,
+        log_file: Optional[str] = None,
+        log_level: int = logging.INFO,
+        use_console=False,
+    ) -> None:
+        self.logger = logging.getLogger("custom_logger")
+        self.logger.setLevel(log_level)
+
+        if log_file:
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setLevel(log_level)
+            file_formatter = logging.Formatter("%(asctime)s - %(message)s")
+            file_handler.setFormatter(file_formatter)
+            self.logger.addHandler(file_handler)
+
+        if use_console:
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(log_level)
+            console_formatter = logging.Formatter("%(message)s")
+            console_handler.setFormatter(console_formatter)
+            self.logger.addHandler(console_handler)
+
+    def log(self, level: int, message: str) -> None:
+        self.logger.log(level, message)
+
+    def debug(self, message: str) -> None:
+        self.logger.debug(message)
+
+    def info(self, message: str) -> None:
+        self.logger.info(message)
+
+    def warning(self, message: str) -> None:
+        self.logger.warning(message)
+
+    def error(self, message: str) -> None:
+        self.logger.error(message)
+
+    def critical(self, message: str) -> None:
+        self.logger.critical(message)
