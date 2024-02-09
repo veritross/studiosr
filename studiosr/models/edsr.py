@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from studiosr.models.common import BaseModule, MeanShift, ResBlock, Upsampler, conv2d
-from studiosr.utils import download_weights
+from studiosr.utils import download
 
 
 class EDSR(BaseModule):
@@ -69,7 +69,7 @@ class EDSR(BaseModule):
         os.makedirs(model_dir, exist_ok=True)
         link = url[file_name]
         path = os.path.join(model_dir, file_name)
-        download_weights(link, path)
+        download(link, path)
         pretrained = torch.load(path)
         model.load_state_dict(pretrained, strict=False)
         return model

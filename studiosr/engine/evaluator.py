@@ -44,8 +44,9 @@ class Evaluator:
         func: Callable,
         y_only: bool = True,
         visualize: bool = False,
+        logging: bool = True,
     ):
-        psnr, ssim = self.run(func, y_only, visualize)
+        psnr, ssim = self.run(func, y_only, visualize, logging)
         print(f" {self.dataset:>8} - Average PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}")
         return psnr, ssim
 
@@ -54,6 +55,7 @@ class Evaluator:
         func: Callable,
         y_only: bool = True,
         visualize: bool = False,
+        logging: bool = False,
     ):
         crop_border = self.scale
         psnrs, ssims = [], []
@@ -63,9 +65,11 @@ class Evaluator:
             ssim = compute_ssim(sr, gt, crop_border=crop_border, y_only=y_only)
             psnrs.append(psnr)
             ssims.append(ssim)
-            print(
-                f" {self.dataset:>8} - {i+1:>3}/{len(self.testset):>3} PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}", end="\r"
-            )
+            if logging:
+                print(
+                    f" {self.dataset:>8} - {i + 1:>3}/{len(self.testset):>3} PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}",
+                    end="\r",
+                )
             if visualize:
                 nn = cv2.resize(lq, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_NEAREST)
                 bc = cv2.resize(lq, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_CUBIC)
@@ -106,7 +110,7 @@ class Evaluator:
         log_ssim = "|   SSIM |"
 
         for dataset in ["Set5", "Set14", "BSD100", "Urban100", "Manga109"]:
-            psnr, ssim = Evaluator(dataset, scale).run(func, y_only)
+            psnr, ssim = Evaluator(dataset, scale).run(func, y_only, logging=True)
             log_data += " %8s |" % dataset
             log_line += " -------- |"
             log_psnr += " %8.3f |" % psnr

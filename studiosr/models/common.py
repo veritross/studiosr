@@ -14,6 +14,7 @@ class BaseModule(nn.Module):
 
     @torch.no_grad()
     def inference(self, image: np.ndarray) -> np.ndarray:
+        self.eval()
         scale = 255.0 if self.img_range == 1.0 else 1.0
         device = next(self.parameters()).get_device()
         device = torch.device("cpu") if device < 0 else device

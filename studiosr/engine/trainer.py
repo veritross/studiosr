@@ -3,13 +3,14 @@ import platform
 from typing import Callable, List
 
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data import DataLoader, Dataset, DistributedSampler
+from torch.utils.data import Dataset
 
-from studiosr.data import DataIterator
+from studiosr.data import DataHandler
 from studiosr.engine import Evaluator
+from studiosr.models.common import BaseModule
+from studiosr.utils import get_device
 
 
 class Trainer:
@@ -29,7 +30,7 @@ class Trainer:
 
     def __init__(
         self,
-        model: nn.Module,
+        model: BaseModule,
         train_dataset: Dataset,
         evaluator: Evaluator = None,
         batch_size: int = 32,
@@ -42,12 +43,11 @@ class Trainer:
         gamma: float = 0.5,
         milestones: List[int] = [250000, 400000, 450000, 475000],
         loss_function: Callable = nn.L1Loss(),
-        log_interval: int = 1000,
+        eval_interval: int = 1000,
         ckpt_path: str = "checkpoints",
         bfloat16: bool = True,
         seed: int = 0,
     ):
-
         self.model = model
         self.dataset = train_dataset
         self.evaluator = evaluator
@@ -55,11 +55,11 @@ class Trainer:
         self.batch_size = batch_size
         self.num_workers = 0 if platform.system() == "Windows" else num_workers
         self.max_iters = max_iters
-        self.log_interval = log_interval
+        self.eval_interval = eval_interval
         self.ckpt_path = ckpt_path
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.bfloat16 = bfloat16 if self.device == "cuda" and torch.cuda.is_bf16_supported() else False
+        self.device = get_device()
+        self.dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() and bfloat16 else torch.float32
         self.seed = seed
 
         self.optimizer = torch.optim.Adam(
@@ -71,66 +71,23 @@ class Trainer:
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=milestones, gamma=gamma)
         self.criterion = loss_function
 
-        self.iter_num = 0
-        self.iter_time = 0.0
-        self.iter_dt = 0.0
-
     def run(self):
-        device = self.device
-        dtype = torch.bfloat16 if self.bfloat16 else torch.float32
+        device, dtype = self.device, self.dtype
         print(f"device: {device}  dtype: {dtype}")
         ctx = torch.autocast(device_type=device, dtype=dtype)
-        ddp = int(os.environ.get("RANK", -1)) != -1
-        if ddp:
-            backend = "nccl"
-            dist.init_process_group(backend=backend)
-            ddp_rank = int(os.environ["RANK"])
-            ddp_local_rank = int(os.environ["LOCAL_RANK"])
-            ddp_world_size = int(os.environ["WORLD_SIZE"])
-            device = f"cuda:{ddp_local_rank}"
-            torch.cuda.set_device(device)
-            master_process = ddp_rank == 0
-            sampler = DistributedSampler(
-                self.dataset,
-                num_replicas=ddp_world_size,
-                rank=ddp_rank,
-                shuffle=True,
-            )
-            seed_offset = ddp_rank
-        else:
-            ddp_world_size = 1
-            master_process = True
-            sampler = None
-            seed_offset = 0
-        torch.manual_seed(self.seed + seed_offset)
 
-        dataloader = DataLoader(
-            self.dataset,
-            batch_size=self.batch_size // ddp_world_size,
-            num_workers=self.num_workers,
-            sampler=sampler,
-            shuffle=sampler is None,
-            drop_last=True,
-            pin_memory=True,
-        )
-        data_iter = DataIterator(dataloader)
+        data_handler = DataHandler(self.dataset, self.batch_size, self.num_workers)
+        data_handler.set_seed(self.seed)
 
-        model = self.model
-        model.to(device)
-        if ddp:
+        model = self.model.to(device)
+        if data_handler.ddp_enabled:
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DDP(model, device_ids=[device], output_device=device)
-        raw_model = model.module if ddp else model
 
-        if master_process:
-            os.makedirs(self.ckpt_path, exist_ok=True)
-
+        best_psnr = 0.0
         model = model.train()
-        self.iter_num = 0
-        while True:
-            self.iter_num += 1
-            if self.iter_num > self.max_iters:
-                break
-            x, y = data_iter.get_batch()
+        while data_handler.iterations < self.max_iters:
+            x, y = data_handler.get_batch()
             x = x.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
 
@@ -143,17 +100,27 @@ class Trainer:
             self.optimizer.zero_grad(set_to_none=True)
             self.scheduler.step()
 
-            print(f" Iterations = {self.iter_num:<8}", end="\r")
-            if self.iter_num % self.log_interval == 0 and master_process:
-                if self.evaluator:
-                    raw_model = raw_model.eval()
-                    psnr, ssim = self.evaluator.run(raw_model.inference)
-                    raw_model = raw_model.train()
-                    print(f" Iterations = {self.iter_num:<8}  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}")
-                torch.save(
-                    raw_model.state_dict(),
-                    os.path.join(self.ckpt_path, "ckpt_%d.pth" % (self.iter_num)),
-                )
+            iterations = data_handler.iterations
+            print(f"\r Iterations = {iterations:<8}", end="")
+            if iterations % self.eval_interval == 0 and data_handler.is_main_process:
+                psnr, ssim = self.evaluate()
+                print(f"  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}")
+                if best_psnr <= psnr:
+                    best_psnr = psnr
+                    self.save("best.pth")
 
-        if ddp:
-            dist.destroy_process_group()
+        data_handler.close()
+
+    def evaluate(self) -> List[float]:
+        psnr, ssim = 0.0, 0.0
+        if self.evaluator:
+            self.model = self.model.eval()
+            psnr, ssim = self.evaluator.run(self.model.inference)
+            self.model = self.model.train()
+        return psnr, ssim
+
+    def save(self, file_name: str) -> str:
+        os.makedirs(self.ckpt_path, exist_ok=True)
+        save_path = os.path.join(self.ckpt_path, file_name)
+        torch.save(self.model.state_dict(), save_path)
+        return save_path

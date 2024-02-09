@@ -18,7 +18,7 @@ from studiosr.models.common import (
     window_partition,
     window_reverse,
 )
-from studiosr.utils import download_weights
+from studiosr.utils import download
 
 
 class WindowAttention(nn.Module):
@@ -397,7 +397,7 @@ class SwinIR(BaseModule):
             os.makedirs(model_dir, exist_ok=True)
             link = model_url + file_name
             path = os.path.join(model_dir, file_name)
-            download_weights(link, path)
+            download(link, path)
             pretrained = torch.load(path)
             params_key = "params"
             params = pretrained[params_key] if params_key in pretrained else pretrained

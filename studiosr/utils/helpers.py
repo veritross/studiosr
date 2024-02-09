@@ -10,7 +10,7 @@ def get_device():
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def download_weights(src: str, dst: str) -> None:
+def download(src: str, dst: str) -> None:
     def show_progress(block_num: int, block_size: int, total_size: int) -> None:
         size = block_num * block_size / 1000000
         progress = block_num * block_size / total_size * 100

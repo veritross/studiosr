@@ -25,7 +25,7 @@ trainer = Trainer(model, dataset, evaluator, batch_size=batch_size)
 trainer.run()
 
 # Train with the model's training configuration.
-model = EDSR(scale=scale)
+model = SRCNN(scale=scale)
 config = model.get_training_config()
 trainer = Trainer(model, dataset, evaluator, **config)
 trainer.run()
