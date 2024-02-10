@@ -1,13 +1,11 @@
 import os
-import zipfile
 from typing import Dict
 
-import gdown
 import torch
 import torch.nn as nn
 
 from studiosr.models.common import BaseModule, ChannelAttention, MeanShift, Upsampler, conv2d
-from studiosr.utils import get_device
+from studiosr.utils import gdown_and_extract, get_device
 
 
 class RCAB(nn.Module):
@@ -93,11 +91,7 @@ class RCAN(BaseModule):
         if not os.path.exists(rcan_path):
             os.makedirs(pretrained_dir, exist_ok=True)
             id = "10bEK-NxVtOS9-XSeyOZyaRmxUTX3iIRa"
-            path = os.path.join(pretrained_dir, "RCAN.zip")
-            gdown.download(id=id, output=path, quiet=False)
-            with zipfile.ZipFile(path, "r") as zip_ref:
-                zip_ref.extractall(pretrained_dir)
-            os.remove(path)
+            gdown_and_extract(id=id, save_dir=pretrained_dir)
         model_path = os.path.join(rcan_path, f"RCAN_BIX{scale}.pt")
         model = RCAN(scale=scale, img_range=255.0)
         model.load_state_dict(torch.load(model_path, map_location=get_device()), False)

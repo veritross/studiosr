@@ -1,1 +1,1 @@
-from studiosr.data.dataset import DataHandler, DataIterator, PairedImageDataset
+from studiosr.data.dataset import DIV2K, DataHandler, DataIterator, PairedImageDataset

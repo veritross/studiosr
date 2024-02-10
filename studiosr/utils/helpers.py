@@ -1,11 +1,15 @@
 import logging
 import os
+import tempfile
+import zipfile
 from typing import List, Optional
-from urllib import request
 
 import cv2
+import gdown
 import numpy as np
+import requests
 import torch
+from tqdm import tqdm
 
 
 def get_device() -> str:
@@ -13,13 +17,23 @@ def get_device() -> str:
 
 
 def download(src: str, dst: str) -> None:
-    def show_progress(block_num: int, block_size: int, total_size: int) -> None:
-        size = block_num * block_size / 1000000
-        progress = block_num * block_size / total_size * 100
-        print("  %4.1f / 100.0  --  %6.1f MB" % (progress, size), end="\r")
+    response = requests.get(src, stream=True)
+    total_size = int(response.headers.get("content-length", 0))
+    block_size = 1024
+    progress_bar = tqdm(total=total_size, unit="B", unit_scale=True)
+    with open(dst, "wb") as file:
+        for data in response.iter_content(block_size):
+            progress_bar.update(len(data))
+            file.write(data)
+    progress_bar.close()
 
-    if not os.path.exists(dst):
-        request.urlretrieve(src, dst, show_progress)
+
+def gdown_and_extract(id: str, save_dir: str) -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        zip_path = os.path.join(temp_dir, "tmp.zip")
+        gdown.download(id=id, output=zip_path, quiet=False)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(save_dir)
 
 
 def imread(path: str) -> np.ndarray:
@@ -78,30 +92,7 @@ class Logger:
 
 
 def get_image_extensions() -> List[str]:
-    return [
-        ".bmp",
-        ".dib",
-        ".jpeg",
-        ".jpg",
-        ".jpe",
-        ".jp2",
-        ".png",
-        ".webp",
-        ".avif",
-        ".pbm",
-        ".pgm",
-        ".ppm",
-        ".pxm",
-        ".pnm",
-        ".pfm",
-        ".sr",
-        ".ras",
-        ".tiff",
-        ".tif",
-        ".exr",
-        ".hdr",
-        ".pic",
-    ]
+    return [".bmp", ".jpeg", ".jpg", ".jpe", ".jp2", ".png", ".webp", ".tiff", ".tif"]
 
 
 def get_image_files(root: str) -> List[str]:
@@ -111,6 +102,4 @@ def get_image_files(root: str) -> List[str]:
             extension = os.path.splitext(f)[1].lower()
             if extension in get_image_extensions():
                 image_files.append(f)
-    print(image_files)
-    print(root)
     return image_files

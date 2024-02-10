@@ -1,13 +1,15 @@
 import os
-from typing import List, Tuple
+from typing import Tuple
 
+import cv2
 import numpy as np
 import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
+from tqdm import tqdm
 
 from studiosr.data import transforms as T
-from studiosr.utils import get_image_files, imread
+from studiosr.utils import gdown_and_extract, get_image_files, imread
 
 
 class PairedImageDataset(Dataset):
@@ -157,3 +159,94 @@ class DataHandler:
     def close(self) -> None:
         if self.ddp_enabled:
             dist.destroy_process_group()
+
+
+def extract_subimages(
+    input_dir: str,
+    output_dir: str,
+    crop_size: int,
+    step: int,
+) -> None:
+    os.makedirs(output_dir, exist_ok=True)
+    files = get_image_files(input_dir)
+    for f in tqdm(files):
+        name = os.path.splitext(f)[0]
+        name = name.replace("x2", "").replace("x3", "").replace("x4", "")
+        open_path = os.path.join(input_dir, f)
+        image = cv2.imread(open_path)
+
+        h, w = image.shape[0:2]
+        y_range = np.arange(0, h - crop_size + 1, step)
+        if h - (y_range[-1] + crop_size) > 0:
+            y_range = np.append(y_range, h - crop_size)
+        x_range = np.arange(0, w - crop_size + 1, step)
+        if w - (x_range[-1] + crop_size) > 0:
+            x_range = np.append(x_range, w - crop_size)
+
+        index = 0
+        for y in y_range:
+            for x in x_range:
+                index += 1
+                cropped = image[y : y + crop_size, x : x + crop_size]
+                save_path = os.path.join(output_dir, name + f"_{index:03d}.png")
+                cv2.imwrite(save_path, cropped)
+
+
+class DIV2K(PairedImageDataset):
+    def __init__(
+        self,
+        dataset_dir: str,
+        size: int = 48,
+        scale: int = 4,
+        transform: bool = False,
+        to_tensor: bool = False,
+        download: bool = False,
+    ):
+        if download:
+            self.download(dataset_dir=dataset_dir)
+            self.prepare(dataset_dir=dataset_dir)
+        dataset_path = os.path.join(dataset_dir, "DIV2K/sub")
+        gt_path = os.path.join(dataset_path, "DIV2K_train_HR")
+        lq_path = os.path.join(dataset_path, f"DIV2K_train_LR_bicubic/X{scale}")
+        super().__init__(
+            gt_path=gt_path,
+            lq_path=lq_path,
+            size=size,
+            scale=scale,
+            transform=transform,
+            to_tensor=to_tensor,
+        )
+
+    @classmethod
+    def download(cls, dataset_dir: str) -> None:
+        id = "1rhaiGcXoivv5pJKIf7Wy1QJHZ-tgiyB4"
+        gdown_and_extract(id=id, save_dir=dataset_dir)
+
+    @classmethod
+    def prepare(cls, dataset_dir: str) -> None:
+        dataset_dir = os.path.join(dataset_dir, "DIV2K")
+        output_dir = os.path.join(dataset_dir, "sub")
+        extract_subimages(
+            input_dir=os.path.join(dataset_dir, "DIV2K_train_HR"),
+            output_dir=os.path.join(output_dir, "DIV2K_train_HR"),
+            crop_size=480,
+            step=240,
+        )
+        extract_subimages(
+            input_dir=os.path.join(dataset_dir, "DIV2K_train_LR_bicubic/X2"),
+            output_dir=os.path.join(output_dir, "DIV2K_train_LR_bicubic/X2"),
+            crop_size=240,
+            step=120,
+        )
+        extract_subimages(
+            input_dir=os.path.join(dataset_dir, "DIV2K_train_LR_bicubic/X3"),
+            output_dir=os.path.join(output_dir, "DIV2K_train_LR_bicubic/X3"),
+            crop_size=160,
+            step=80,
+        )
+        extract_subimages(
+            input_dir=os.path.join(dataset_dir, "DIV2K_train_LR_bicubic/X4"),
+            output_dir=os.path.join(output_dir, "DIV2K_train_LR_bicubic/X4"),
+            crop_size=120,
+            step=60,
+        )

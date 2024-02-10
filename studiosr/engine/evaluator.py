@@ -1,11 +1,11 @@
 import os
-from typing import Callable
+from typing import Callable, Tuple
 
 import cv2
 import numpy as np
 
 from studiosr.data import PairedImageDataset
-from studiosr.utils import compare, compute_psnr, compute_ssim
+from studiosr.utils import compare, compute_psnr, compute_ssim, gdown_and_extract
 
 
 class Evaluator:
@@ -28,7 +28,7 @@ class Evaluator:
         dataset: str = "Set5",
         scale: int = 4,
         root: str = "dataset",
-    ):
+    ) -> None:
         self.dataset = dataset
         self.scale = scale
         self.root = root
@@ -45,7 +45,7 @@ class Evaluator:
         y_only: bool = True,
         visualize: bool = False,
         logging: bool = True,
-    ):
+    ) -> Tuple[float, float]:
         psnr, ssim = self.run(func, y_only, visualize, logging)
         print(f" {self.dataset:>8} - Average PSNR: {psnr:6.3f}, SSIM: {ssim:6.4f}")
         return psnr, ssim
@@ -56,7 +56,7 @@ class Evaluator:
         y_only: bool = True,
         visualize: bool = False,
         logging: bool = False,
-    ):
+    ) -> Tuple[float, float]:
         crop_border = self.scale
         psnrs, ssims = [], []
         for i, (lq, gt) in enumerate(self.testset):
@@ -79,11 +79,7 @@ class Evaluator:
         return psnr, ssim
 
     @staticmethod
-    def download_dataset(root: str = "data", dataset: str = "Set5"):
-        import zipfile
-
-        import gdown
-
+    def download_dataset(root: str = "data", dataset: str = "Set5") -> str:
         dataset_id = {
             "Set5": "18bimJIcXV0nxYU9y64Liwo63afEZXlAY",
             "Set14": "1Wn8mJRFT7N4z0cGbqwGev4ltbLwi4Sg2",
@@ -95,11 +91,7 @@ class Evaluator:
         if not os.path.exists(benchmark_path):
             os.makedirs(root, exist_ok=True)
             id = dataset_id[dataset]
-            zip_path = benchmark_path + ".zip"
-            gdown.download(id=id, output=zip_path, quiet=False)
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(root)
-            os.remove(zip_path)
+            gdown_and_extract(id=id, save_dir=root)
         return benchmark_path
 
     @staticmethod
