@@ -7,42 +7,7 @@ import torch.distributed as dist
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
 from studiosr.data import transforms as T
-from studiosr.utils import imread
-
-IMAGE_EXTENSIONS = [
-    ".bmp",
-    ".dib",
-    ".jpeg",
-    ".jpg",
-    ".jpe",
-    ".jp2",
-    ".png",
-    ".webp",
-    ".avif",
-    ".pbm",
-    ".pgm",
-    ".ppm",
-    ".pxm",
-    ".pnm",
-    ".pfm",
-    ".sr",
-    ".ras",
-    ".tiff",
-    ".tif",
-    ".exr",
-    ".hdr",
-    ".pic",
-]
-
-
-def get_image_files(root: str) -> List[str]:
-    image_files = []
-    for (root, dirs, files) in os.walk(root):
-        for f in files:
-            extension = os.path.splitext(f)[1].lower()
-            if extension in IMAGE_EXTENSIONS:
-                image_files.append(f)
-    return image_files
+from studiosr.utils import get_image_files, imread
 
 
 class PairedImageDataset(Dataset):

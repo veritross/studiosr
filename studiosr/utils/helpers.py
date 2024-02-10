@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional
+from typing import List, Optional
 from urllib import request
 
 import cv2
@@ -75,3 +75,42 @@ class Logger:
 
     def critical(self, message: str) -> None:
         self.logger.critical(message)
+
+
+def get_image_extensions() -> List[str]:
+    return [
+        ".bmp",
+        ".dib",
+        ".jpeg",
+        ".jpg",
+        ".jpe",
+        ".jp2",
+        ".png",
+        ".webp",
+        ".avif",
+        ".pbm",
+        ".pgm",
+        ".ppm",
+        ".pxm",
+        ".pnm",
+        ".pfm",
+        ".sr",
+        ".ras",
+        ".tiff",
+        ".tif",
+        ".exr",
+        ".hdr",
+        ".pic",
+    ]
+
+
+def get_image_files(root: str) -> List[str]:
+    image_files = []
+    for (root, dirs, files) in os.walk(root):
+        for f in files:
+            extension = os.path.splitext(f)[1].lower()
+            if extension in get_image_extensions():
+                image_files.append(f)
+    print(image_files)
+    print(root)
+    return image_files

@@ -20,7 +20,13 @@ python3 -m pip install -e .
 ## Documentation
 Documentation along with a quick start guide can be found in the [docs/](./docs/) directory.
 
+
 ### Quick Example
+
+```bash
+$ python -m studiosr --image image.png --scale 4 --model swinir
+```
+
 ```python
 from studiosr.models import SwinIR
 from studiosr.utils import imread, imwrite
