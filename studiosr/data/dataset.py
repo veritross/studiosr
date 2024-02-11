@@ -192,7 +192,27 @@ def extract_subimages(
                 cv2.imwrite(save_path, cropped)
 
 
+def prepare_dataset(dataset_dir: str, dataset_name: str, postfix: str = ""):
+    dataset_dir = os.path.join(dataset_dir, dataset_name)
+    sub_dir = os.path.join(dataset_dir, "sub")
+    packs = [
+        dict(dir_name=f"{dataset_name}{postfix}_HR", crop_size=480, step=240),
+        dict(dir_name=f"{dataset_name}{postfix}_LR_bicubic/X2", crop_size=240, step=120),
+        dict(dir_name=f"{dataset_name}{postfix}_LR_bicubic/X3", crop_size=160, step=80),
+        dict(dir_name=f"{dataset_name}{postfix}_LR_bicubic/X4", crop_size=120, step=60),
+    ]
+
+    for pack in packs:
+        dir_name, crop_size, step = pack["dir_name"], pack["crop_size"], pack["step"]
+        input_dir = os.path.join(dataset_dir, dir_name)
+        output_dir = os.path.join(sub_dir, dir_name)
+        if not os.path.exists(output_dir):
+            extract_subimages(input_dir=input_dir, output_dir=output_dir, crop_size=crop_size, step=step)
+
+
 class DIV2K(PairedImageDataset):
+    dataset_name = "DIV2K"
+
     def __init__(
         self,
         dataset_dir: str,
@@ -204,10 +224,11 @@ class DIV2K(PairedImageDataset):
     ):
         if download:
             self.download(dataset_dir=dataset_dir)
+        dataset_path = os.path.join(dataset_dir, f"{self.dataset_name}/sub")
+        if not os.path.exists(dataset_path):
             self.prepare(dataset_dir=dataset_dir)
-        dataset_path = os.path.join(dataset_dir, "DIV2K/sub")
-        gt_path = os.path.join(dataset_path, "DIV2K_train_HR")
-        lq_path = os.path.join(dataset_path, f"DIV2K_train_LR_bicubic/X{scale}")
+        gt_path = os.path.join(dataset_path, f"{self.dataset_name}_train_HR")
+        lq_path = os.path.join(dataset_path, f"{self.dataset_name}_train_LR_bicubic/X{scale}")
         super().__init__(
             gt_path=gt_path,
             lq_path=lq_path,
@@ -224,29 +245,42 @@ class DIV2K(PairedImageDataset):
 
     @classmethod
     def prepare(cls, dataset_dir: str) -> None:
-        dataset_dir = os.path.join(dataset_dir, "DIV2K")
-        output_dir = os.path.join(dataset_dir, "sub")
-        extract_subimages(
-            input_dir=os.path.join(dataset_dir, "DIV2K_train_HR"),
-            output_dir=os.path.join(output_dir, "DIV2K_train_HR"),
-            crop_size=480,
-            step=240,
+        prepare_dataset(dataset_dir, cls.dataset_name, "_train")
+
+
+class Flickr2K(PairedImageDataset):
+    dataset_name = "Flickr2K"
+
+    def __init__(
+        self,
+        dataset_dir: str,
+        size: int = 48,
+        scale: int = 4,
+        transform: bool = False,
+        to_tensor: bool = False,
+        download: bool = False,
+    ):
+        if download:
+            self.download(dataset_dir=dataset_dir)
+        dataset_path = os.path.join(dataset_dir, f"{self.dataset_name}/sub")
+        if not os.path.exists(dataset_path):
+            self.prepare(dataset_dir=dataset_dir)
+        gt_path = os.path.join(dataset_path, f"{self.dataset_name}_HR")
+        lq_path = os.path.join(dataset_path, f"{self.dataset_name}_LR_bicubic/X{scale}")
+        super().__init__(
+            gt_path=gt_path,
+            lq_path=lq_path,
+            size=size,
+            scale=scale,
+            transform=transform,
+            to_tensor=to_tensor,
         )
-        extract_subimages(
-            input_dir=os.path.join(dataset_dir, "DIV2K_train_LR_bicubic/X2"),
-            output_dir=os.path.join(output_dir, "DIV2K_train_LR_bicubic/X2"),
-            crop_size=240,
-            step=120,
-        )
-        extract_subimages(
-            input_dir=os.path.join(dataset_dir, "DIV2K_train_LR_bicubic/X3"),
-            output_dir=os.path.join(output_dir, "DIV2K_train_LR_bicubic/X3"),
-            crop_size=160,
-            step=80,
-        )
-        extract_subimages(
-            input_dir=os.path.join(dataset_dir, "DIV2K_train_LR_bicubic/X4"),
-            output_dir=os.path.join(output_dir, "DIV2K_train_LR_bicubic/X4"),
-            crop_size=120,
-            step=60,
-        )
+
+    @classmethod
+    def download(cls, dataset_dir: str) -> None:
+        id = "1--pNeHQlsaIWPzSnnIPzmvPpimdIhN5C"
+        gdown_and_extract(id=id, save_dir=dataset_dir)
+
+    @classmethod
+    def prepare(cls, dataset_dir: str) -> None:
+        prepare_dataset(dataset_dir, cls.dataset_name)
