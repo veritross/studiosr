@@ -42,7 +42,7 @@ class PairedImageDataset(Dataset):
     ) -> None:
         self.gt_path = gt_path
         self.lq_path = lq_path
-        self.files = sorted(get_image_files(gt_path))
+        self.files = get_image_files(gt_path)
         self.size = size
         self.scale = scale
         self.transform = transform
@@ -284,3 +284,76 @@ class Flickr2K(PairedImageDataset):
     @classmethod
     def prepare(cls, dataset_dir: str) -> None:
         prepare_dataset(dataset_dir, cls.dataset_name)
+
+
+class DF2K:
+    def __init__(
+        self,
+        dataset_dir: str,
+        size: int = 48,
+        scale: int = 4,
+        transform: bool = False,
+        to_tensor: bool = False,
+        download: bool = False,
+    ):
+        self.size = size
+        self.scale = scale
+        self.transform = transform
+        self.to_tensor = to_tensor
+
+        if download:
+            DIV2K.download(dataset_dir=dataset_dir)
+            Flickr2K.download(dataset_dir=dataset_dir)
+        div2k_path = os.path.join(dataset_dir, "DIV2K/sub")
+        flickr2k_path = os.path.join(dataset_dir, "Flickr2K/sub")
+        if not os.path.exists(div2k_path):
+            DIV2K.prepare(dataset_dir=dataset_dir)
+        if not os.path.exists(flickr2k_path):
+            Flickr2K.prepare(dataset_dir=dataset_dir)
+
+        self.file_paths = []
+
+        div2k_gt_path = os.path.join(div2k_path, "DIV2K_train_HR")
+        div2k_lq_path = os.path.join(div2k_path, f"DIV2K_train_LR_bicubic/X{scale}")
+        files = get_image_files(div2k_gt_path)
+        for f in files:
+            gt_file = os.path.join(div2k_gt_path, f)
+            lq_file = os.path.join(div2k_lq_path, f)
+            self.file_paths.append((lq_file, gt_file))
+
+        flickr2k_gt_path = os.path.join(flickr2k_path, "Flickr2K_HR")
+        flickr2k_lq_path = os.path.join(flickr2k_path, f"Flickr2K_LR_bicubic/X{scale}")
+        files = get_image_files(flickr2k_gt_path)
+        for f in files:
+            gt_file = os.path.join(flickr2k_gt_path, f)
+            lq_file = os.path.join(flickr2k_lq_path, f)
+            self.file_paths.append((lq_file, gt_file))
+
+        if self.transform:
+            self.transform = T.Compose(
+                [
+                    T.RandomCrop(self.size, self.scale),
+                    T.RandomHorizontalFlip(),
+                    T.RandomVerticalFlip(),
+                    T.RandomRotation90(),
+                ]
+            )
+        if self.to_tensor:
+            self.to_tensor = T.ToTensor()
+
+    def __len__(self) -> int:
+        return len(self.file_paths)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        lq, gt = self.get_image_pair(idx)
+        if self.transform:
+            lq, gt = self.transform(lq, gt)
+        if self.to_tensor:
+            lq, gt = self.to_tensor(lq, gt)
+        return lq, gt
+
+    def get_image_pair(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
+        lq_path, gt_path = self.file_paths[idx]
+        lq = imread(lq_path)
+        gt = imread(gt_path)
+        return lq, gt

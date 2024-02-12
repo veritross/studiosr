@@ -102,4 +102,4 @@ def get_image_files(root: str) -> List[str]:
             extension = os.path.splitext(f)[1].lower()
             if extension in get_image_extensions():
                 image_files.append(f)
-    return image_files
+    return sorted(image_files)
