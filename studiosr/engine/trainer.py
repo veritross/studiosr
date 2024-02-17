@@ -57,6 +57,7 @@ class Trainer:
         self.max_iters = max_iters
         self.eval_interval = eval_interval
         self.ckpt_path = ckpt_path
+        os.makedirs(self.ckpt_path, exist_ok=True)
 
         self.device = get_device()
         self.dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() and bfloat16 else torch.float32
