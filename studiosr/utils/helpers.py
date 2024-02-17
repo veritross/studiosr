@@ -9,6 +9,7 @@ import gdown
 import numpy as np
 import requests
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 
 
@@ -103,3 +104,7 @@ def get_image_files(root: str) -> List[str]:
             if extension in get_image_extensions():
                 image_files.append(f)
     return sorted(image_files)
+
+
+def count_parameters(model: nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

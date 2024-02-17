@@ -1,6 +1,7 @@
 from studiosr.utils.compare import compare
 from studiosr.utils.helpers import (
     Logger,
+    count_parameters,
     download,
     gdown_and_extract,
     get_device,
