@@ -11,7 +11,7 @@ from studiosr import Evaluator, Trainer
 from studiosr.data import DIV2K
 from studiosr.models import SwinIR
 
-dataset_dir="path/to/dataset_dir,
+dataset_dir="path/to/dataset_dir",
 scale = 4
 size = 64
 dataset = DIV2K(
