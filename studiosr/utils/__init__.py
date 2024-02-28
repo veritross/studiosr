@@ -10,4 +10,5 @@ from studiosr.utils.helpers import (
     imread,
     imwrite,
 )
+from studiosr.utils.losses import CharbonnierLoss
 from studiosr.utils.metrics import compute_psnr, compute_ssim
