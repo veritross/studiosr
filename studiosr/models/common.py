@@ -7,6 +7,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def diverge_images(image: np.ndarray) -> List[np.ndarray]:
+    transformed_images = []
+    for i in range(4):
+        rotated = np.rot90(image, k=i, axes=[0, 1])
+        flipped = np.fliplr(rotated)
+        transformed_images.extend([rotated, flipped])
+    return transformed_images
+
+
+def converge_images(images: List[np.ndarray]) -> np.ndarray:
+    transformed_images = []
+    for i, image in enumerate(images):
+        image = np.fliplr(image) if i & 1 else image
+        image = np.rot90(image, k=i // 2, axes=[1, 0])
+        transformed_images.append(image)
+    image = np.mean(transformed_images, axis=0)
+    image = image.round().clip(0, 255).astype(np.uint8)
+    return image
+
+
 class BaseModule(nn.Module):
     def __init__(self):
         super().__init__()
@@ -22,8 +42,25 @@ class BaseModule(nn.Module):
         x = torch.from_numpy(x).unsqueeze(0)
         x = x.to(device)
         output = self.forward(x) * scale
-        y = output.squeeze().cpu().numpy().round().clip(0, 255)
-        return y.astype(np.uint8).transpose(1, 2, 0)
+        output = output.squeeze().cpu().numpy().transpose(1, 2, 0)
+        return output.round().clip(0, 255).astype(np.uint8)
+
+    @torch.no_grad()
+    def inference_with_self_ensemble(self, image: np.ndarray) -> np.ndarray:
+        self.eval()
+        scale = 255.0 if self.img_range == 1.0 else 1.0
+        device = next(self.parameters()).get_device()
+        device = torch.device("cpu") if device < 0 else device
+        images = diverge_images(image)
+        outputs = []
+        for image in images:
+            x = image.transpose(2, 0, 1).astype(np.float32) / scale
+            x = torch.from_numpy(x).unsqueeze(0)
+            x = x.to(device)
+            output = self.forward(x) * scale
+            outputs.append(output.squeeze().cpu().numpy().transpose(1, 2, 0))
+        image = converge_images(outputs)
+        return image
 
 
 def conv2d(in_channels: int, out_channels: int, kernel_size: int) -> nn.Module:

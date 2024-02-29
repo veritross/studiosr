@@ -49,6 +49,9 @@ device = get_device()
 model = SwinIR.from_pretrained(scale=scale).eval().to(device)
 evaluator = Evaluator(dataset, scale=scale)
 psnr, ssim = evaluator(model.inference)
+
+# Evaluation with self-ensemble
+psnr, ssim = evaluator(model.inference_with_self_ensemble)
 ```
 
 ### Benchmark

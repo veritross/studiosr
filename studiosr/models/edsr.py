@@ -69,7 +69,8 @@ class EDSR(BaseModule):
         os.makedirs(model_dir, exist_ok=True)
         link = url[file_name]
         path = os.path.join(model_dir, file_name)
-        download(link, path)
+        if not os.path.exists(path):
+            download(link, path)
         pretrained = torch.load(path)
         model.load_state_dict(pretrained, strict=False)
         return model
