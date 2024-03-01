@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="studiosr",
-    version="0.1.3",
+    version="0.1.4",
     author="veritross",
     description="Python library to accelerate super-resolution research",
     license="MIT",

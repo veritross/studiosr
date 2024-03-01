@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple
 
 import cv2
 import numpy as np
@@ -41,7 +41,7 @@ class Evaluator:
 
     def __call__(
         self,
-        func: Callable,
+        func: Callable[[np.ndarray], np.ndarray],
         y_only: bool = True,
         visualize: bool = False,
         logging: bool = True,
@@ -52,7 +52,7 @@ class Evaluator:
 
     def run(
         self,
-        func: Callable,
+        func: Callable[[np.ndarray], np.ndarray],
         y_only: bool = True,
         visualize: bool = False,
         logging: bool = False,
@@ -79,7 +79,7 @@ class Evaluator:
         return psnr, ssim
 
     @staticmethod
-    def download_dataset(root: str = "data", dataset: str = "Set5") -> str:
+    def download_dataset(root: str = "dataset", dataset: str = "Set5") -> str:
         dataset_id = {
             "Set5": "18bimJIcXV0nxYU9y64Liwo63afEZXlAY",
             "Set14": "1Wn8mJRFT7N4z0cGbqwGev4ltbLwi4Sg2",
@@ -95,21 +95,30 @@ class Evaluator:
         return benchmark_path
 
     @staticmethod
-    def benchmark(func: Callable, scale: int = 4, y_only: bool = True) -> None:
+    def benchmark(
+        func: Callable[[np.ndarray], np.ndarray],
+        scale: int = 4,
+        y_only: bool = True,
+    ) -> Tuple[List[float], List[float]]:
         log_data = "| Metric |"
         log_line = "| ------ |"
         log_psnr = "|   PSNR |"
         log_ssim = "|   SSIM |"
 
+        psnr_list, ssim_list = [], []
         for dataset in ["Set5", "Set14", "BSD100", "Urban100", "Manga109"]:
             psnr, ssim = Evaluator(dataset, scale).run(func, y_only, logging=True)
             log_data += " %8s |" % dataset
             log_line += " -------- |"
             log_psnr += " %8.3f |" % psnr
             log_ssim += " %8.4f |" % ssim
+            psnr_list.append(psnr)
+            ssim_list.append(ssim)
 
         print(log_data)
         print(log_line)
         print(log_psnr)
         print(log_ssim)
         print()
+
+        return psnr_list, ssim_list

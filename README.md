@@ -20,7 +20,6 @@ python3 -m pip install -e .
 ## Documentation
 Documentation along with a quick start guide can be found in the [docs/](./docs/) directory.
 
-
 ### Quick Example
 
 ```bash
@@ -36,6 +35,25 @@ image = imread("image.png")
 upscaled = model.inference(image)
 imwrite("upscaled.png", upscaled)
 ```
+
+
+## Benchmark
+- The evaluation metric is [PSNR](https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio).
+- The "+" symbol indicates the result of self-ensemble.
+
+| Method  | Scale | Set5   | Set14  | BSD100 | Urban100 | Manga109 | Training Dataset |
+| ------- | ----- | ------ | ------ | ------ | -------- | -------- | ---------------- |
+| EDSR    | x 4   | 32.452 | 28.790 | 27.718 | 26.635   | 30.985   | DIV2K            |
+| EDSR+   | x 4   | 32.612 | 28.925 | 27.798 | 26.859   | 31.398   | DIV2K            |
+| RCAN    | x 4   | 32.602 | 28.825 | 27.739 | 26.736   | 31.127   | DIV2K            |
+| RCAN+   | x 4   | 32.702 | 28.940 | 27.821 | 27.020   | 31.563   | DIV2K            |
+| HAN     | x 4   | 32.567 | 28.864 | 27.771 | 26.767   | 31.364   | DIV2K            |
+| HAN+    | x 4   | 32.689 | 28.940 | 27.820 | 26.935   | 31.687   | DIV2K            |
+| SwinIR  | x 4   | 32.894 | 29.066 | 27.912 | 27.448   | 31.947   | DF2K             |
+| SwinIR+ | x 4   | 32.899 | 29.117 | 27.942 | 27.564   | 32.147   | DF2K             |
+| HAT     | x 4   | 32.960 | 29.206 | 27.974 | 27.953   | 32.409   | DF2K             |
+| HAT+    | x 4   | 33.075 | 29.253 | 28.015 | 28.087   | 32.600   | DF2K             |
+
 
 ## License
 StudioSR is an open-source library under the **MIT license**. 

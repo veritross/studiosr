@@ -372,7 +372,7 @@ class SwinIR(BaseModule):
         cls,
         scale: int = 4,
         light: bool = False,
-        dataset: str = "DIV2K",
+        dataset: str = "DF2K",
         pretrained: bool = True,
     ) -> nn.Module:
         assert scale in [2, 3, 4, 8]
@@ -397,7 +397,8 @@ class SwinIR(BaseModule):
             os.makedirs(model_dir, exist_ok=True)
             link = model_url + file_name
             path = os.path.join(model_dir, file_name)
-            download(link, path)
+            if not os.path.exists(path):
+                download(link, path)
             pretrained = torch.load(path)
             params_key = "params"
             params = pretrained[params_key] if params_key in pretrained else pretrained
