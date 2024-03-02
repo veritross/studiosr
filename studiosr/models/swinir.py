@@ -263,7 +263,7 @@ class SwinIR(BaseModule):
         self.scale = scale
         self.upsampler = upsampler
         self.window_size = window_size
-        self.normalizer = Normalizer()
+        self.normalizer = Normalizer(img_range=img_range)
 
         self.conv_first = nn.Conv2d(num_in_ch, embed_dim, 3, 1, 1)
 
@@ -381,17 +381,21 @@ class SwinIR(BaseModule):
         config = {"scale": scale}
         img_size = 64 if dataset == "DF2K" else 48
         task = "001_classicalSR"
+        label = "M"
         if light:
             config["depths"] = [6, 6, 6, 6]
             config["embed_dim"] = 60
             config["num_heads"] = [6, 6, 6, 6]
             config["upsampler"] = "pixelshuffledirect"
             task = "002_lightweightSR"
+            dataset = "DIV2K"
+            img_size = 64
+            label = "S"
 
         model = SwinIR(**config)
 
         if pretrained:
-            file_name = f"{task}_{dataset}_s{img_size}w8_SwinIR-M_x{scale}.pth"
+            file_name = f"{task}_{dataset}_s{img_size}w8_SwinIR-{label}_x{scale}.pth"
             model_url = "https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/"
             model_dir = "pretrained"
             os.makedirs(model_dir, exist_ok=True)

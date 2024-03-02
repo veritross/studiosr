@@ -24,7 +24,7 @@ class EDSR(BaseModule):
         self.add_mean = MeanShift(img_range, sign=1)
 
         kernel_size = 3
-        self.head = nn.Sequential(conv2d(n_colors, n_feats, kernel_size))
+        self.head = conv2d(n_colors, n_feats, kernel_size)
         m_body = [ResBlock(n_feats, kernel_size, res_scale) for _ in range(n_resblocks)]
         self.body = nn.Sequential(*m_body, conv2d(n_feats, n_feats, kernel_size))
         self.tail = nn.Sequential(Upsampler(scale, n_feats), conv2d(n_feats, n_colors, kernel_size))

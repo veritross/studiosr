@@ -52,7 +52,7 @@ class SRResNet(BaseModule):
         super().__init__()
 
         self.img_range = img_range
-        self.normalizer = Normalizer()
+        self.normalizer = Normalizer(img_range=img_range)
 
         # Low frequency information extraction layer
         self.conv1 = nn.Sequential(

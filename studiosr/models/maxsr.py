@@ -396,7 +396,7 @@ class MaxSR(BaseModule):
         self.adaptive = adaptive
         num_stages = len(depth)
         self.img_range = img_range
-        self.normalizer = Normalizer()
+        self.normalizer = Normalizer(img_range=img_range)
 
         # convolutional stem
 

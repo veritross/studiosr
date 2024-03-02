@@ -415,7 +415,7 @@ class HAT(BaseModule):
         num_feat = 64
         self.img_range = img_range
         self.scale = scale
-        self.normalizer = Normalizer()
+        self.normalizer = Normalizer(img_range=img_range)
 
         # relative position index
         relative_position_index_SA = self.calculate_rpi_sa()

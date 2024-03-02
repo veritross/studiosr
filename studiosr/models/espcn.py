@@ -19,7 +19,7 @@ class ESPCN(BaseModule):
         out_channels = int(n_colors * (scale**2))
 
         self.img_range = img_range
-        self.normalizer = Normalizer()
+        self.normalizer = Normalizer(img_range=img_range)
 
         # Feature mapping
         self.feature_maps = nn.Sequential(

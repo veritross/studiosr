@@ -42,7 +42,7 @@ class SRCNN(BaseModule):
 
         self.img_range = img_range
         self.residual = residual
-        self.normalizer = Normalizer()
+        self.normalizer = Normalizer(img_range=img_range)
 
         self.upsample = nn.Upsample(scale_factor=scale, mode="bicubic")
         self.layers = nn.Sequential(
