@@ -374,7 +374,7 @@ class SwinIR(BaseModule):
         light: bool = False,
         dataset: str = "DF2K",
         pretrained: bool = True,
-    ) -> nn.Module:
+    ) -> "SwinIR":
         assert scale in [2, 3, 4, 8]
         assert dataset in ["DIV2K", "DF2K"]
 

@@ -54,7 +54,7 @@ class EDSR(BaseModule):
         return training_config
 
     @classmethod
-    def from_pretrained(cls, scale: int = 4) -> nn.Module:
+    def from_pretrained(cls, scale: int = 4) -> "EDSR":
         url = {
             "r16f64x2.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x2-1bc95232.pt",
             "r16f64x3.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x3-abf2a44e.pt",

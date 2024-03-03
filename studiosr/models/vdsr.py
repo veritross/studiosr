@@ -1,5 +1,8 @@
 import math
+import os
+from typing import Dict
 
+import gdown
 import torch
 import torch.nn as nn
 
@@ -42,3 +45,32 @@ class VDSR(BaseModule):
 
         x = self.normalizer.unnormalize(x)
         return x
+
+    def get_training_config(self) -> Dict:
+        training_config = dict(
+            batch_size=32,
+            learning_rate=0.0002,
+            beta1=0.9,
+            beta2=0.99,
+            weight_decay=0.0,
+            max_iters=500000,
+            gamma=0.5,
+            milestones=[250000, 400000, 450000, 475000],
+        )
+        return training_config
+
+    @classmethod
+    def from_pretrained(cls, scale: int = 4) -> "VDSR":
+        assert scale in [4]
+        file_ids = {4: "1Q5DKy7oAQbgGqxI-unxPy9X3GcHwZokC"}
+        model = VDSR(scale=scale)
+        file_name = f"VDSRx{scale}.pth"
+        model_dir = "pretrained"
+        os.makedirs(model_dir, exist_ok=True)
+        file_id = file_ids[scale]
+        path = os.path.join(model_dir, file_name)
+        if not os.path.exists(path):
+            gdown.download(id=file_id, output=path, quiet=False)
+        pretrained = torch.load(path)
+        model.load_state_dict(pretrained)
+        return model

@@ -551,7 +551,7 @@ class HAT(BaseModule):
         return x[:, :, : H * self.scale, : W * self.scale]
 
     @classmethod
-    def from_pretrained(cls, scale: int = 4) -> nn.Module:
+    def from_pretrained(cls, scale: int = 4) -> "HAT":
         file_ids = {
             2: "1M2HZD6i9ZNpsJR-dKKBjlzL_AXntCvGR",
             3: "1dWG4X_6VUSi1hhIwX0zEwddWI9M0tFmI",

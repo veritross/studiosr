@@ -117,7 +117,7 @@ class HAN(BaseModule):
         return training_config
 
     @classmethod
-    def from_pretrained(cls, scale: int = 4) -> nn.Module:
+    def from_pretrained(cls, scale: int = 4) -> "HAN":
 
         file_ids = {
             2: "12NhWDksOXiVnGw-Zbv6Y20J2DnRRKkJ2",

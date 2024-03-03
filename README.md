@@ -39,10 +39,12 @@ imwrite("upscaled.png", upscaled)
 
 ## Benchmark
 - The evaluation metric is [PSNR](https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio).
-- The "+" symbol indicates the result of self-ensemble.
+- "+" indicates the result of self-ensemble.
 
 | Method  | Scale | Set5   | Set14  | BSD100 | Urban100 | Manga109 | Training Dataset |
 | ------- | ----- | ------ | ------ | ------ | -------- | -------- | ---------------- |
+| VDSR    | x 4   | 31.860 | 28.424 | 27.431 | 25.729   | 29.973   | DF2K             |
+| VDSR+   | x 4   | 31.950 | 28.491 | 27.471 | 25.809   | 30.182   | DF2K             |
 | EDSR    | x 4   | 32.452 | 28.790 | 27.718 | 26.635   | 30.985   | DIV2K            |
 | EDSR+   | x 4   | 32.612 | 28.925 | 27.798 | 26.859   | 31.398   | DIV2K            |
 | RCAN    | x 4   | 32.602 | 28.825 | 27.739 | 26.736   | 31.127   | DIV2K            |

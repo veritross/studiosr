@@ -83,7 +83,7 @@ class RCAN(BaseModule):
         return training_config
 
     @classmethod
-    def from_pretrained(cls, scale: int = 4) -> nn.Module:
+    def from_pretrained(cls, scale: int = 4) -> "RCAN":
 
         pretrained_dir = "pretrained"
         rcan_dir = "models_ECCV2018RCAN"
