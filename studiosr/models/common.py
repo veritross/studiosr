@@ -1,5 +1,5 @@
 import math
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -28,7 +28,7 @@ def converge_images(images: List[np.ndarray]) -> np.ndarray:
 
 
 class BaseModule(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.img_range = 1.0
 
@@ -61,6 +61,15 @@ class BaseModule(nn.Module):
             outputs.append(output.squeeze().cpu().numpy().transpose(1, 2, 0))
         image = converge_images(outputs)
         return image
+
+    def get_training_config(self) -> Dict:
+        training_config = dict()
+        return training_config
+
+    @classmethod
+    def from_pretrained(cls, scale: int = 4) -> "BaseModule":
+        model = cls(scale=scale)
+        return model
 
 
 def conv2d(in_channels: int, out_channels: int, kernel_size: int) -> nn.Module:
@@ -182,7 +191,7 @@ class PatchUnEmbed(nn.Module):
 
 
 class Normalizer(nn.Module):
-    def __init__(self, img_range: float = 1.0, img_mean: List[float] = [0.4488, 0.4371, 0.4040]):
+    def __init__(self, img_range: float = 1.0, img_mean: List[float] = [0.4488, 0.4371, 0.4040]) -> None:
         super().__init__()
         self.img_range = img_range
         self.img_mean = torch.Tensor(img_mean).view(1, 3, 1, 1)

@@ -47,7 +47,7 @@ class Trainer:
         ckpt_path: str = "checkpoints",
         bfloat16: bool = True,
         seed: int = 0,
-    ):
+    ) -> None:
         self.model = model
         self.dataset = train_dataset
         self.evaluator = evaluator
@@ -72,7 +72,7 @@ class Trainer:
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=milestones, gamma=gamma)
         self.criterion = loss_function
 
-    def run(self):
+    def run(self) -> None:
         device, dtype = self.device, self.dtype
         print(f"device: {device}  dtype: {dtype}")
         ctx = torch.autocast(device_type=device, dtype=dtype)
