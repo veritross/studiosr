@@ -61,8 +61,12 @@ class VDSR(BaseModule):
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> "VDSR":
-        assert scale in [4]
-        file_ids = {4: "1Q5DKy7oAQbgGqxI-unxPy9X3GcHwZokC"}
+        assert scale in [2, 3, 4]
+        file_ids = {
+            2: "1eQnGseT3SqQirB5ueAFfsClhLlpeoUOX",
+            3: "1wXOnLFf7rWglzzVMzYSVrb5Po79vUUq3",
+            4: "1Q5DKy7oAQbgGqxI-unxPy9X3GcHwZokC",
+        }
         model = VDSR(scale=scale)
         file_name = f"VDSRx{scale}.pth"
         model_dir = "pretrained"
