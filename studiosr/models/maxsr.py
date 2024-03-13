@@ -570,7 +570,7 @@ class MaxSR(BaseModule):
         model = MaxSR(**config)
 
         if ckpt_path is not None:
-            ckpt = torch.load(ckpt_path)
+            ckpt = torch.load(ckpt_path, map_location="cpu")
             model.load_state_dict(ckpt)
 
         return model

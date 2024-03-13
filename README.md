@@ -1,10 +1,10 @@
 # StudioSR
-StudioSR is a Pytorch library providing implementations of training and evaluation of super-resolution models. StudioSR aims to offer an identical playground for modern super-resolution models so that researchers can readily compare and analyze a new idea. (inspired by [PyTorch-StudioGan](https://github.com/POSTECH-CVLab/PyTorch-StudioGAN))
+StudioSR is a PyTorch library providing implementations of training and evaluation of super-resolution models. StudioSR aims to offer an identical playground for modern super-resolution models so that researchers can readily compare and analyze a new idea. (inspired by [PyTorch-StudioGan](https://github.com/POSTECH-CVLab/PyTorch-StudioGAN))
 
 
 ## Installation
 
-### From PyPI
+### From [PyPI](https://pypi.org/project/studiosr/)
 ```bash
 pip install studiosr
 ```

@@ -403,7 +403,7 @@ class SwinIR(BaseModule):
             path = os.path.join(model_dir, file_name)
             if not os.path.exists(path):
                 download(link, path)
-            pretrained = torch.load(path)
+            pretrained = torch.load(path, map_location="cpu")
             params_key = "params"
             params = pretrained[params_key] if params_key in pretrained else pretrained
             model.load_state_dict(params, strict=False)

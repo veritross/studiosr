@@ -8,7 +8,7 @@ with open(directory / "README.md", encoding="utf-8") as f:
 
 setup(
     name="studiosr",
-    version="0.1.5",
+    version="0.1.6",
     author="veritross",
     description="Python library to accelerate super-resolution research",
     license="MIT",
@@ -28,7 +28,7 @@ setup(
     ],
     install_requires=[
         "einops>=0.6.0",
-        "gdown==4.6.0",
+        "gdown==5.1.0",
         "opencv-python>=4.7.0",
         "scikit-image>=0.21.0",
         "timm>=0.9.0",

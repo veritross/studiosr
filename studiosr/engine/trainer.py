@@ -22,7 +22,6 @@ class Trainer:
         train_dataset (Dataset): The dataset used for training.
         evaluator (Evaluator, optional): An evaluator for model performance (default is None).
         batch_size (int, optional): Batch size for training (default is 32).
-        tbWriter (SummaryWriter, optional): TensorBoard SummaryWriter for logging (default is None).
 
     Note:
         This class is designed for training a neural network model using PyTorch.

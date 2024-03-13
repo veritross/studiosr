@@ -71,6 +71,6 @@ class EDSR(BaseModule):
         path = os.path.join(model_dir, file_name)
         if not os.path.exists(path):
             download(link, path)
-        pretrained = torch.load(path)
+        pretrained = torch.load(path, map_location="cpu")
         model.load_state_dict(pretrained, strict=False)
         return model

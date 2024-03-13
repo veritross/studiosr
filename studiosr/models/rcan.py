@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from studiosr.models.common import BaseModule, ChannelAttention, MeanShift, Upsampler, conv2d
-from studiosr.utils import gdown_and_extract, get_device
+from studiosr.utils import gdown_and_extract
 
 
 class RCAB(nn.Module):
@@ -94,5 +94,5 @@ class RCAN(BaseModule):
             gdown_and_extract(id=id, save_dir=pretrained_dir)
         model_path = os.path.join(rcan_path, f"RCAN_BIX{scale}.pt")
         model = RCAN(scale=scale, img_range=255.0)
-        model.load_state_dict(torch.load(model_path, map_location=get_device()), False)
+        model.load_state_dict(torch.load(model_path, map_location="cpu"), False)
         return model
