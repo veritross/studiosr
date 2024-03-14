@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+from studiosr import Evaluator
 from studiosr.models import SwinIR
 
 
@@ -23,3 +24,14 @@ def test_shape_of_swinir(scale, input_shape, output_shape):
     x = torch.randn(*input_shape)
     y = model(x)
     assert y.shape == output_shape
+
+
+@pytest.mark.parametrize(
+    ["scale", "target_psnr"],
+    [(4, 32.4)],
+)
+def test_pretrained_swinir(scale, target_psnr):
+    evaluator = Evaluator(scale=scale)
+    model = SwinIR.from_pretrained(scale=scale, light=True)
+    psnr, ssim = evaluator(model.inference)
+    assert psnr >= target_psnr

@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+from studiosr import Evaluator
 from studiosr.models import VDSR
 
 
@@ -23,3 +24,14 @@ def test_shape_of_vdsr(scale, input_shape, output_shape):
     x = torch.randn(*input_shape)
     y = model(x)
     assert y.shape == output_shape
+
+
+@pytest.mark.parametrize(
+    ["scale", "target_psnr"],
+    [(4, 31.85), (3, 34.12), (2, 37.81)],
+)
+def test_pretrained_vdsr(scale, target_psnr):
+    evaluator = Evaluator(scale=scale)
+    model = VDSR.from_pretrained(scale=scale)
+    psnr, ssim = evaluator(model.inference)
+    assert psnr >= target_psnr
