@@ -28,6 +28,9 @@ class DataIterator:
     def epochs(self) -> float:
         return self.iterations / len(self.dataloader)
 
+    def set_iterations(self, iterations: int) -> None:
+        self.iterations = iterations
+
 
 class DataHandler:
     def __init__(self, dataset: Dataset, batch_size: int, num_workers: int) -> None:
@@ -81,6 +84,9 @@ class DataHandler:
 
     def set_seed(self, seed: int) -> None:
         torch.manual_seed(seed + self.ddp_rank)
+
+    def set_iterations(self, iterations: int) -> None:
+        self.data_iterator.set_iterations(iterations)
 
     def close(self) -> None:
         if self.ddp_enabled:

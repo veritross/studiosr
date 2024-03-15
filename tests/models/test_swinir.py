@@ -26,6 +26,7 @@ def test_shape_of_swinir(scale, input_shape, output_shape):
     assert y.shape == output_shape
 
 
+@pytest.mark.skip("TODO: fix download error in github actions")
 @pytest.mark.parametrize(
     ["scale", "target_psnr"],
     [(4, 32.4)],

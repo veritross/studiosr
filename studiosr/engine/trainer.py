@@ -1,6 +1,6 @@
 import os
 import platform
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -58,17 +58,18 @@ class Trainer:
         self.ckpt_path = ckpt_path
         os.makedirs(self.ckpt_path, exist_ok=True)
 
+        self.learning_rate = learning_rate
+        self.betas = (beta1, beta2)
+        self.weight_decay = weight_decay
+        self.milestones = milestones
+        self.gamma = gamma
+
         self.device = get_device()
         self.dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() and bfloat16 else torch.float32
         self.seed = seed
 
-        self.optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=learning_rate,
-            betas=(beta1, beta2),
-            weight_decay=weight_decay,
-        )
-        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=milestones, gamma=gamma)
+        self.optimizer = None
+        self.scheduler = None
         self.criterion = loss_function
 
     def run(self) -> None:
@@ -76,21 +77,24 @@ class Trainer:
         print(f"device: {device}  dtype: {dtype}")
         ctx = torch.autocast(device_type=device, dtype=dtype)
 
-        data_handler = DataHandler(self.dataset, self.batch_size, self.num_workers)
-        data_handler.set_seed(self.seed)
+        self.data_handler = DataHandler(self.dataset, self.batch_size, self.num_workers)
+        self.data_handler.set_seed(self.seed)
 
         model = self.model.to(device)
-        if data_handler.ddp_enabled:
+        if self.load("latest"):
+            print("-> The latest checkpoint was loaded.")
+
+        if self.data_handler.ddp_enabled:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DDP(model, device_ids=[device], output_device=device)
 
-        if data_handler.is_main_process:
+        if self.data_handler.is_main_process:
             logger = Logger(os.path.join(self.ckpt_path, "train.log"))
 
         best_psnr = 0.0
         model = model.train()
-        while data_handler.iterations < self.max_iters:
-            x, y = data_handler.get_batch()
+        while self.data_handler.iterations < self.max_iters:
+            x, y = self.data_handler.get_batch()
             x = x.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
 
@@ -103,20 +107,21 @@ class Trainer:
             self.optimizer.zero_grad(set_to_none=True)
             self.scheduler.step()
 
-            iterations = data_handler.iterations
+            iterations = self.data_handler.iterations
             print(f" Iterations = {iterations:<8}", end="\r")
-            if iterations % self.eval_interval == 0 and data_handler.is_main_process:
+            if iterations % self.eval_interval == 0 and self.data_handler.is_main_process:
                 psnr, ssim = self.evaluate()
                 log = f" Iterations = {iterations:<8}  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}"
                 logger.info(log)
                 if best_psnr <= psnr:
                     print(log, end="\r")
                     best_psnr = psnr
-                    self.save("best.pth")
+                    self.save("best")
+                self.save("latest")
 
-        data_handler.close()
+        self.data_handler.close()
 
-    def evaluate(self) -> List[float]:
+    def evaluate(self) -> Tuple[float]:
         psnr, ssim = 0.0, 0.0
         if self.evaluator:
             self.model = self.model.eval()
@@ -124,8 +129,44 @@ class Trainer:
             self.model = self.model.train()
         return psnr, ssim
 
+    def build_optimizer(self) -> Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LRScheduler]:
+        optimizer = torch.optim.Adam(
+            self.model.parameters(),
+            lr=self.learning_rate,
+            betas=self.betas,
+            weight_decay=self.weight_decay,
+        )
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer,
+            milestones=self.milestones,
+            gamma=self.gamma,
+        )
+        return optimizer, scheduler
+
     def save(self, file_name: str) -> str:
         os.makedirs(self.ckpt_path, exist_ok=True)
-        save_path = os.path.join(self.ckpt_path, file_name)
-        torch.save(self.model.state_dict(), save_path)
-        return save_path
+        model_path = os.path.join(self.ckpt_path, file_name + ".model.pth")
+        train_path = os.path.join(self.ckpt_path, file_name + ".train.pth")
+        torch.save(self.model.state_dict(), model_path)
+        train_dict = dict(
+            optimizer=self.optimizer.state_dict(),
+            scheduler=self.scheduler.state_dict(),
+            iteration=self.data_handler.iterations,
+        )
+        torch.save(train_dict, train_path)
+        return model_path, train_path
+
+    def load(self, file_name: str) -> bool:
+        model_path = os.path.join(self.ckpt_path, file_name + ".model.pth")
+        train_path = os.path.join(self.ckpt_path, file_name + ".train.pth")
+        if not (os.path.isfile(model_path) and os.path.isfile(train_path)):
+            self.optimizer, self.scheduler = self.build_optimizer()
+            return False
+        model_dict = torch.load(model_path, map_location=self.device)
+        train_dict = torch.load(train_path, map_location=self.device)
+        self.model.load_state_dict(model_dict)
+        self.optimizer, self.scheduler = self.build_optimizer()
+        self.optimizer.load_state_dict(train_dict["optimizer"])
+        self.scheduler.load_state_dict(train_dict["scheduler"])
+        self.data_handler.set_iterations(train_dict["iteration"])
+        return True
