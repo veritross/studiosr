@@ -71,6 +71,7 @@ class Trainer:
         self.optimizer = None
         self.scheduler = None
         self.criterion = loss_function
+        self.best_psnr = 0.0
 
     def run(self) -> None:
         device, dtype = self.device, self.dtype
@@ -82,7 +83,7 @@ class Trainer:
 
         model = self.model.to(device)
         if self.load("latest"):
-            print("-> The latest checkpoint was loaded.")
+            print(f"-> The latest checkpoint was loaded. [best_psnr = {self.best_psnr:6.3f}]")
 
         if self.data_handler.ddp_enabled:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -91,7 +92,6 @@ class Trainer:
         if self.data_handler.is_main_process:
             logger = Logger(os.path.join(self.ckpt_path, "train.log"))
 
-        best_psnr = 0.0
         model = model.train()
         while self.data_handler.iterations < self.max_iters:
             x, y = self.data_handler.get_batch()
@@ -113,9 +113,9 @@ class Trainer:
                 psnr, ssim = self.evaluate()
                 log = f" Iterations = {iterations:<8}  PSNR: {psnr:6.3f} SSIM: {ssim:6.4f}"
                 logger.info(log)
-                if best_psnr <= psnr:
+                if self.best_psnr <= psnr:
                     print(log, end="\r")
-                    best_psnr = psnr
+                    self.best_psnr = psnr
                     self.save("best")
                 self.save("latest")
 
@@ -152,6 +152,7 @@ class Trainer:
             optimizer=self.optimizer.state_dict(),
             scheduler=self.scheduler.state_dict(),
             iteration=self.data_handler.iterations,
+            best_psnr=self.best_psnr,
         )
         torch.save(train_dict, train_path)
         return model_path, train_path
@@ -169,4 +170,5 @@ class Trainer:
         self.optimizer.load_state_dict(train_dict["optimizer"])
         self.scheduler.load_state_dict(train_dict["scheduler"])
         self.data_handler.set_iterations(train_dict["iteration"])
+        self.best_psnr = train_dict.get("best_psnr", 0.0)
         return True

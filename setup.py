@@ -8,9 +8,9 @@ with open(directory / "README.md", encoding="utf-8") as f:
 
 setup(
     name="studiosr",
-    version="0.1.6",
+    version="0.1.7",
     author="veritross",
-    description="Python library to accelerate super-resolution research",
+    description="PyTorch library to accelerate super-resolution research",
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
