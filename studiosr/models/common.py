@@ -30,9 +30,10 @@ def converge_images(images: List[np.ndarray]) -> np.ndarray:
 class BaseModule(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.img_range = 1.0
+        self.img_range: float = 1.0
+        self.scale: int = 4
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def inference(self, image: np.ndarray) -> np.ndarray:
         self.eval()
         scale = 255.0 if self.img_range == 1.0 else 1.0
@@ -45,7 +46,7 @@ class BaseModule(nn.Module):
         output = output.squeeze().cpu().numpy().transpose(1, 2, 0)
         return output.round().clip(0, 255).astype(np.uint8)
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def inference_with_self_ensemble(self, image: np.ndarray) -> np.ndarray:
         self.eval()
         scale = 255.0 if self.img_range == 1.0 else 1.0
@@ -70,6 +71,20 @@ class BaseModule(nn.Module):
     def from_pretrained(cls, scale: int = 4) -> "BaseModule":
         model = cls(scale=scale)
         return model
+
+    def export(
+        self,
+        path: Optional[str] = None,
+        input_shape: List[int] = [1, 3, 256, 256],
+        format: str = "onnx",
+    ) -> str:
+        format = format.lower()
+        assert format in ["onnx"]
+        if path is None:
+            path = f"{self.__class__.__name__}x{self.scale}.{format}"
+        x = torch.randn(input_shape)
+        torch.onnx.export(self, x, path, input_names=["input"], output_names=["output"])
+        return path
 
 
 def conv2d(in_channels: int, out_channels: int, kernel_size: int) -> nn.Module:
