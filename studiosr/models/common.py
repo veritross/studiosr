@@ -7,23 +7,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def diverge_images(image: np.ndarray) -> List[np.ndarray]:
+def diverge_images(image: torch.Tensor) -> List[torch.Tensor]:
     transformed_images = []
     for i in range(4):
-        rotated = np.rot90(image, k=i, axes=[0, 1])
-        flipped = np.fliplr(rotated)
+        rotated = torch.rot90(image, k=i, dims=[0, 1])
+        flipped = torch.fliplr(rotated)
         transformed_images.extend([rotated, flipped])
     return transformed_images
 
 
-def converge_images(images: List[np.ndarray]) -> np.ndarray:
+def converge_images(images: List[torch.Tensor]) -> torch.Tensor:
     transformed_images = []
     for i, image in enumerate(images):
-        image = np.fliplr(image) if i & 1 else image
-        image = np.rot90(image, k=i // 2, axes=[1, 0])
+        image = torch.fliplr(image) if i & 1 else image
+        image = torch.rot90(image, k=i // 2, dims=[1, 0])
         transformed_images.append(image)
-    image = np.mean(transformed_images, axis=0)
-    image = image.round().clip(0, 255).astype(np.uint8)
+    image = torch.mean(torch.stack(transformed_images), dim=0)
     return image
 
 
@@ -39,12 +38,11 @@ class BaseModule(nn.Module):
         scale = 255.0 if self.img_range == 1.0 else 1.0
         device = next(self.parameters()).get_device()
         device = torch.device("cpu") if device < 0 else device
-        x = image.transpose(2, 0, 1).astype(np.float32) / scale
-        x = torch.from_numpy(x).unsqueeze(0)
-        x = x.to(device)
-        output = self.forward(x) * scale
-        output = output.squeeze().cpu().numpy().transpose(1, 2, 0)
-        return output.round().clip(0, 255).astype(np.uint8)
+        image = torch.from_numpy(image).to(device)
+        x = image.permute(2, 0, 1).unsqueeze(0).to(torch.float32) / scale
+        output = self.forward(x)[0].permute(1, 2, 0) * scale
+        output = output.round().clip(0, 255).to(torch.uint8)
+        return output.cpu().numpy()
 
     @torch.inference_mode()
     def inference_with_self_ensemble(self, image: np.ndarray) -> np.ndarray:
@@ -52,16 +50,16 @@ class BaseModule(nn.Module):
         scale = 255.0 if self.img_range == 1.0 else 1.0
         device = next(self.parameters()).get_device()
         device = torch.device("cpu") if device < 0 else device
+        image = torch.from_numpy(image).to(device)
         images = diverge_images(image)
         outputs = []
         for image in images:
-            x = image.transpose(2, 0, 1).astype(np.float32) / scale
-            x = torch.from_numpy(x).unsqueeze(0)
-            x = x.to(device)
-            output = self.forward(x) * scale
-            outputs.append(output.squeeze().cpu().numpy().transpose(1, 2, 0))
-        image = converge_images(outputs)
-        return image
+            x = image.permute(2, 0, 1).unsqueeze(0).to(torch.float32) / scale
+            output = self.forward(x)[0].permute(1, 2, 0)
+            outputs.append(output)
+        output = converge_images(outputs) * scale
+        output = output.round().clip(0, 255).to(torch.uint8)
+        return output.cpu().numpy()
 
     def get_training_config(self) -> Dict:
         training_config = dict()

@@ -1,6 +1,7 @@
 import os
 from typing import Dict
 
+import gdown
 import torch
 import torch.nn as nn
 
@@ -54,23 +55,38 @@ class EDSR(BaseModule):
         return training_config
 
     @classmethod
-    def from_pretrained(cls, scale: int = 4) -> "EDSR":
-        url = {
-            "r16f64x2.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x2-1bc95232.pt",
-            "r16f64x3.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x3-abf2a44e.pt",
-            "r16f64x4.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x4-6b446fab.pt",
-            "r32f256x2.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_x2-0edfb8a3.pt",
-            "r32f256x3.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_x3-ea3ef2c6.pt",
-            "r32f256x4.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_x4-4f62e9ef.pt",
-        }
-        model = EDSR(scale=scale, img_range=255.0)
-        file_name = f"r32f256x{scale}.pth"
+    def from_pretrained(cls, scale: int = 4, dataset: str = "DIV2K") -> "EDSR":
+        assert scale in [2, 3, 4]
+        assert dataset in ["DIV2K", "DF2K"]
+
         model_dir = "pretrained"
         os.makedirs(model_dir, exist_ok=True)
-        link = url[file_name]
-        path = os.path.join(model_dir, file_name)
-        if not os.path.exists(path):
-            download(link, path)
+        if dataset == "DIV2K":
+            url = {
+                "r32f256x2.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_x2-0edfb8a3.pt",
+                "r32f256x3.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_x3-ea3ef2c6.pt",
+                "r32f256x4.pth": "https://cv.snu.ac.kr/research/EDSR/models/edsr_x4-4f62e9ef.pt",
+            }
+            model = EDSR(scale=scale, img_range=255.0)
+            file_name = f"r32f256x{scale}.pth"
+
+            link = url[file_name]
+            path = os.path.join(model_dir, file_name)
+            if not os.path.exists(path):
+                download(link, path)
+        elif dataset == "DF2K":
+            file_ids = {
+                2: "1XEqY_nkUMdIid4lM9zAW99rYDx5eftBT",
+                3: "1H1yFCFK14Z0DWAZHCtGXcWS6377fbkJE",
+                4: "1TeH67rKNSR3dXs56aLqsA-UvLL3TZL-g",
+            }
+            model = EDSR(scale=scale)
+            file_name = f"EDSRx{scale}.pth"
+            file_id = file_ids[scale]
+            path = os.path.join(model_dir, file_name)
+            if not os.path.exists(path):
+                gdown.download(id=file_id, output=path, quiet=False)
+
         pretrained = torch.load(path, map_location="cpu")
         model.load_state_dict(pretrained, strict=False)
         return model
