@@ -42,7 +42,7 @@ class Trainer:
         gamma: float = 0.5,
         milestones: List[int] = [250000, 400000, 450000, 475000],
         loss_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = nn.L1Loss(),
-        eval_interval: int = 100,
+        eval_interval: int = 1000,
         ckpt_path: str = "checkpoints",
         bfloat16: bool = True,
         seed: int = 0,

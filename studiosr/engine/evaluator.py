@@ -13,7 +13,7 @@ class Evaluator:
     A class for evaluating the performance of super-resolution models on image datasets.
 
     Args:
-        dataset (str, optional): The name of the evaluation dataset (default is "Set5").
+        dataset (str, optional): The name of the evaluation dataset (default is "DIV2K_mini").
         scale (int, optional): The scaling factor for super-resolution (default is 4).
         root (str, optional): The root directory where evaluation dataset is located (default is "data").
 
@@ -25,7 +25,7 @@ class Evaluator:
 
     def __init__(
         self,
-        dataset: str = "Set5",
+        dataset: str = "DIV2K_mini",
         scale: int = 4,
         root: str = "dataset",
     ) -> None:
@@ -86,6 +86,8 @@ class Evaluator:
             "BSD100": "1qoiBkwiUgv62MISQh4A4nibdmDfP5qzJ",
             "Urban100": "1YTYp0gVJj2gpIsL3N8NkEDKEPIZeyhnf",
             "Manga109": "1ZaUD3ZeaaI3zHlEI6HRSx0baBU2CeYe7",
+            "DIV2K": "1kUlppta5vEmXa76EHU_mb6_EoibNWlXw",
+            "DIV2K_mini": "1pDEDDuYzaRzmJb6ztZTafeui1xE6iCz9",
         }
         benchmark_path = os.path.join(root, dataset)
         if not os.path.exists(benchmark_path):
@@ -99,6 +101,7 @@ class Evaluator:
         func: Callable[[np.ndarray], np.ndarray],
         scale: int = 4,
         y_only: bool = True,
+        datasets: List[str] = ["Set5", "Set14", "BSD100", "Urban100", "Manga109"],
     ) -> Tuple[List[float], List[float]]:
         log_data = "| Metric |"
         log_line = "| ------ |"
@@ -106,7 +109,7 @@ class Evaluator:
         log_ssim = "|   SSIM |"
 
         psnr_list, ssim_list = [], []
-        for dataset in ["Set5", "Set14", "BSD100", "Urban100", "Manga109"]:
+        for dataset in datasets:
             psnr, ssim = Evaluator(dataset, scale).run(func, y_only, logging=True)
             log_data += " %8s |" % dataset
             log_line += " -------- |"
