@@ -6,10 +6,10 @@ import gdown
 import torch
 import torch.nn as nn
 
-from studiosr.models.common import BaseModule, Normalizer, conv2d
+from studiosr.models.common import Model, Normalizer, conv2d
 
 
-class VDSR(BaseModule):
+class VDSR(Model):
     def __init__(
         self,
         scale: int = 4,

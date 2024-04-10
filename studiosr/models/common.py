@@ -26,7 +26,7 @@ def converge_images(images: List[torch.Tensor]) -> torch.Tensor:
     return image
 
 
-class BaseModule(nn.Module):
+class Model(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.img_range: float = 1.0
@@ -66,7 +66,7 @@ class BaseModule(nn.Module):
         return training_config
 
     @classmethod
-    def from_pretrained(cls, scale: int = 4) -> "BaseModule":
+    def from_pretrained(cls, scale: int = 4) -> "Model":
         model = cls(scale=scale)
         return model
 
@@ -83,6 +83,9 @@ class BaseModule(nn.Module):
         x = torch.randn(input_shape)
         torch.onnx.export(self, x, path, input_names=["input"], output_names=["output"])
         return path
+
+
+BaseModule = Model
 
 
 def conv2d(in_channels: int, out_channels: int, kernel_size: int) -> nn.Module:

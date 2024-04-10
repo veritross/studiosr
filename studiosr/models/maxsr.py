@@ -7,7 +7,7 @@ from einops.layers.torch import Rearrange, Reduce
 from torch import einsum, nn
 from torch.nn.functional import pad
 
-from studiosr.models.common import BaseModule, Normalizer
+from studiosr.models.common import Model, Normalizer
 
 # helpers
 
@@ -375,7 +375,7 @@ class Upsample(nn.Sequential):
         super(Upsample, self).__init__(*m)
 
 
-class MaxSR(BaseModule):
+class MaxSR(Model):
     def __init__(
         self,
         scale: int = 4,

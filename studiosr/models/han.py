@@ -5,7 +5,7 @@ import gdown
 import torch
 import torch.nn as nn
 
-from studiosr.models.common import BaseModule, MeanShift, Upsampler, conv2d
+from studiosr.models.common import MeanShift, Model, Upsampler, conv2d
 from studiosr.models.rcan import ResidualGroup
 
 
@@ -52,7 +52,7 @@ class CSAM_Module(nn.Module):
         return x
 
 
-class HAN(BaseModule):
+class HAN(Model):
     def __init__(
         self,
         scale: int = 4,

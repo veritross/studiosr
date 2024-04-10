@@ -5,11 +5,11 @@ import gdown
 import torch
 import torch.nn as nn
 
-from studiosr.models.common import BaseModule, MeanShift, ResBlock, Upsampler, conv2d
+from studiosr.models.common import MeanShift, Model, ResBlock, Upsampler, conv2d
 from studiosr.utils import download
 
 
-class EDSR(BaseModule):
+class EDSR(Model):
     def __init__(
         self,
         scale: int = 4,

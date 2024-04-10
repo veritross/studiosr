@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from studiosr.models.common import BaseModule, Normalizer
+from studiosr.models.common import Model, Normalizer
 
 
 class _ResidualConvBlock(nn.Module):
@@ -40,7 +40,7 @@ class _UpsampleBlock(nn.Module):
         return x
 
 
-class SRResNet(BaseModule):
+class SRResNet(Model):
     def __init__(
         self,
         scale: int = 4,

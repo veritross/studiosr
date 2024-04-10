@@ -4,7 +4,7 @@ from typing import Dict
 import torch
 import torch.nn as nn
 
-from studiosr.models.common import BaseModule, ChannelAttention, MeanShift, Upsampler, conv2d
+from studiosr.models.common import ChannelAttention, MeanShift, Model, Upsampler, conv2d
 from studiosr.utils import gdown_and_extract
 
 
@@ -36,7 +36,7 @@ class ResidualGroup(nn.Module):
         return res
 
 
-class RCAN(BaseModule):
+class RCAN(Model):
     def __init__(
         self,
         scale: int = 4,

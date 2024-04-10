@@ -7,8 +7,8 @@ import torch.nn as nn
 from timm.layers import DropPath, trunc_normal_
 
 from studiosr.models.common import (
-    BaseModule,
     Mlp,
+    Model,
     Normalizer,
     PatchEmbed,
     PatchUnEmbed,
@@ -238,7 +238,7 @@ class RSTB(nn.Module):
         return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x, x_size), x_size))) + x
 
 
-class SwinIR(BaseModule):
+class SwinIR(Model):
     def __init__(
         self,
         scale: int = 4,

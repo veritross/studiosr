@@ -3,10 +3,10 @@ import math
 import torch
 from torch import nn
 
-from studiosr.models.common import BaseModule, Normalizer
+from studiosr.models.common import Model, Normalizer
 
 
-class ESPCN(BaseModule):
+class ESPCN(Model):
     def __init__(
         self,
         scale: int = 4,

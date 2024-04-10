@@ -6,11 +6,11 @@ import gdown
 import torch
 import torch.nn as nn
 from einops import rearrange
-from timm.models.layers import DropPath, trunc_normal_
+from timm.layers import DropPath, trunc_normal_
 
 from studiosr.models.common import (
-    BaseModule,
     Mlp,
+    Model,
     Normalizer,
     PatchEmbed,
     PatchUnEmbed,
@@ -385,7 +385,7 @@ class RHAG(nn.Module):
         return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x, x_size, params), x_size))) + x
 
 
-class HAT(BaseModule):
+class HAT(Model):
     def __init__(
         self,
         scale: int = 4,
