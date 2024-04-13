@@ -38,8 +38,8 @@ class Model(nn.Module):
         scale = 255.0 if self.img_range == 1.0 else 1.0
         device = next(self.parameters()).get_device()
         device = torch.device("cpu") if device < 0 else device
-        image = torch.from_numpy(image).to(device)
-        x = image.permute(2, 0, 1).unsqueeze(0).to(torch.float32) / scale
+        image = torch.from_numpy(image.astype(np.float32) / scale).to(device)
+        x = image.permute(2, 0, 1).unsqueeze(0)
         output = self.forward(x)[0].permute(1, 2, 0) * scale
         output = output.round().clip(0, 255).to(torch.uint8)
         return output.cpu().numpy()
@@ -50,11 +50,11 @@ class Model(nn.Module):
         scale = 255.0 if self.img_range == 1.0 else 1.0
         device = next(self.parameters()).get_device()
         device = torch.device("cpu") if device < 0 else device
-        image = torch.from_numpy(image).to(device)
+        image = torch.from_numpy(image.astype(np.float32) / scale).to(device)
         images = diverge_images(image)
         outputs = []
         for image in images:
-            x = image.permute(2, 0, 1).unsqueeze(0).to(torch.float32) / scale
+            x = image.permute(2, 0, 1).unsqueeze(0)
             output = self.forward(x)[0].permute(1, 2, 0)
             outputs.append(output)
         output = converge_images(outputs) * scale
@@ -263,7 +263,8 @@ def calculate_mask(x_size: List[int], window_size: int, shift_size: int) -> torc
 
 def check_image_size(x: torch.Tensor, window_size: int) -> torch.Tensor:
     _, _, h, w = x.size()
-    mod_pad_h = (window_size - h % window_size) % window_size
-    mod_pad_w = (window_size - w % window_size) % window_size
-    x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), "reflect")
+    h_pad = (h // window_size + 1) * window_size - h
+    w_pad = (w // window_size + 1) * window_size - w
+    x = torch.cat([x, torch.flip(x, [2])], 2)[:, :, : h + h_pad, :]
+    x = torch.cat([x, torch.flip(x, [3])], 3)[:, :, :, : w + w_pad]
     return x

@@ -1,4 +1,5 @@
 import os
+import random
 from typing import Tuple
 
 import torch
@@ -83,6 +84,7 @@ class DataHandler:
         return self.data_iterator.get_batch()
 
     def set_seed(self, seed: int) -> None:
+        random.seed(seed + self.ddp_rank)
         torch.manual_seed(seed + self.ddp_rank)
 
     def set_iterations(self, iterations: int) -> None:

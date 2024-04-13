@@ -54,7 +54,7 @@ class Logger:
         self,
         log_file: Optional[str] = None,
         log_level: int = logging.INFO,
-        use_console=False,
+        use_console: bool = False,
     ) -> None:
         self.logger = logging.getLogger("custom_logger")
         self.logger.setLevel(log_level)

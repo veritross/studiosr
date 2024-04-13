@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 from studiosr.data import DataHandler
 from studiosr.engine import Evaluator
-from studiosr.models.common import BaseModule
+from studiosr.models.common import Model
 from studiosr.utils import Logger, get_device
 
 
@@ -29,7 +29,7 @@ class Trainer:
 
     def __init__(
         self,
-        model: BaseModule,
+        model: Model,
         train_dataset: Dataset,
         evaluator: Evaluator = None,
         batch_size: int = 32,

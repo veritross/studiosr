@@ -1,12 +1,13 @@
 import argparse
 import os
 
-from studiosr.models import EDSR, HAN, HAT, RCAN, SwinIR
+from studiosr.models import EDSR, HAN, HAT, RCAN, VDSR, SwinIR
 from studiosr.utils import get_device, get_image_files, imread, imwrite
 
 
 def main() -> None:
     models = dict(
+        vdsr=VDSR,
         edsr=EDSR,
         rcan=RCAN,
         han=HAN,

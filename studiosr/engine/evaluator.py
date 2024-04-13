@@ -111,10 +111,10 @@ class Evaluator:
         psnr_list, ssim_list = [], []
         for dataset in datasets:
             psnr, ssim = Evaluator(dataset, scale).run(func, y_only, logging=True)
-            log_data += " %8s |" % dataset
-            log_line += " -------- |"
-            log_psnr += " %8.3f |" % psnr
-            log_ssim += " %8.4f |" % ssim
+            log_data += " %10s |" % dataset
+            log_line += " ---------- |"
+            log_psnr += " %10.3f |" % psnr
+            log_ssim += " %10.4f |" % ssim
             psnr_list.append(psnr)
             ssim_list.append(ssim)
 

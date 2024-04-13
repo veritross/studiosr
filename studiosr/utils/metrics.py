@@ -1,25 +1,23 @@
+from typing import Tuple
+
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
 
 
-def is_rgb(im):
+def is_rgb(im: np.ndarray) -> bool:
     return len(im.shape) == 3 and im.shape[-1] == 3
 
 
-def to_y(image):
+def to_y(image: np.ndarray) -> np.ndarray:
     if not is_rgb(image):
         return image
     if image.dtype == np.uint8:
-        image = image / 255.0
-    r = image[:, :, 0]
-    g = image[:, :, 1]
-    b = image[:, :, 2]
-    y = 16.0 + 65.481 * r + 128.553 * g + 24.966 * b
-    y = y.clip(0, 255).round().astype(np.uint8)
-    return y
+        image = image.astype(np.float32) / 255.0
+    y = np.dot(image, [65.481, 128.553, 24.966]) + 16.0
+    return y.astype(np.float32)
 
 
-def crop_img_to_equal(im1, im2):
+def crop_img_to_equal(im1: np.ndarray, im2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     diff_x = abs(im1.shape[0] - im2.shape[0])
     diff_y = abs(im1.shape[1] - im2.shape[1])
     if im1.shape[0] > im2.shape[0]:
@@ -35,35 +33,28 @@ def crop_img_to_equal(im1, im2):
     return im1, im2
 
 
-def compute_psnr(im1, im2, y_only=False, crop_border=0):
+def compute_psnr(im1: np.ndarray, im2: np.ndarray, y_only: bool = False, crop_border: int = 0) -> np.float64:
     im1, im2 = crop_img_to_equal(im1, im2)
     if crop_border:
         im1 = im1[crop_border:-crop_border, crop_border:-crop_border]
         im2 = im2[crop_border:-crop_border, crop_border:-crop_border]
     if y_only:
         im1, im2 = to_y(im1), to_y(im2)
-    if im1.dtype == np.uint8:
-        data_range = 255.0
-    else:
-        data_range = 1.0
-    error = np.mean((im1.astype(np.float64) - im2.astype(np.float64)) ** 2)
+    error = np.mean((im1 - im2) ** 2)
     if error == 0:
         return np.inf
-    p = 10 * np.log10((data_range**2) / error)
+    p = 20 * np.log10(255.0 / np.sqrt(error))
     return p
 
 
-def compute_ssim(im1, im2, y_only=False, crop_border=0):
+def compute_ssim(im1: np.ndarray, im2: np.ndarray, y_only: bool = False, crop_border: int = 0) -> np.float64:
     im1, im2 = crop_img_to_equal(im1, im2)
     if crop_border:
         im1 = im1[crop_border:-crop_border, crop_border:-crop_border]
         im2 = im2[crop_border:-crop_border, crop_border:-crop_border]
     if y_only:
         im1, im2 = to_y(im1), to_y(im2)
-    if is_rgb(im1):
-        channel_axis = 2
-    else:
-        channel_axis = None
+    channel_axis = 2 if is_rgb(im1) else None
     s = ssim(
         im1,
         im2,
@@ -73,5 +64,6 @@ def compute_ssim(im1, im2, y_only=False, crop_border=0):
         sigma=1.5,
         use_sample_covariance=False,
         channel_axis=channel_axis,
+        data_range=255,
     )
     return s
