@@ -22,7 +22,7 @@ def test_compute_psnr_zero(image_shape):
 
 @pytest.mark.parametrize("image_shape", image_shapes_for_test)
 def test_compute_psnr_inf(image_shape):
-    image1 = np.random.randint(0, 255, size=image_shape).astype(np.uint8)
+    image1 = np.random.randint(0, 256, size=image_shape).astype(np.uint8)
     image2 = image1.copy()
     psnr = compute_psnr(image1, image2)
     assert np.isinf(psnr)
@@ -30,8 +30,8 @@ def test_compute_psnr_inf(image_shape):
 
 @pytest.mark.parametrize("image_shape", image_shapes_for_test)
 def test_compute_psnr_dtype(image_shape):
-    image1 = np.random.randint(0, 255, size=image_shape).astype(np.uint8)
-    image2 = np.random.randint(0, 255, size=image_shape).astype(np.uint8)
+    image1 = np.random.randint(0, 256, size=image_shape).astype(np.uint8)
+    image2 = np.random.randint(0, 256, size=image_shape).astype(np.uint8)
 
     psnr1 = compute_psnr(image1, image2)
     psnr2 = compute_psnr(image1 / 255.0, image2 / 255.0)
@@ -42,9 +42,9 @@ def test_compute_psnr_dtype(image_shape):
 def test_compute_psnr_compatibility(image_shape):
     from skimage.metrics import peak_signal_noise_ratio
 
-    image1 = np.random.randint(0, 255, size=image_shape).astype(np.uint8)
-    image2 = np.random.randint(0, 255, size=image_shape).astype(np.uint8)
+    image1 = np.random.randint(0, 256, size=image_shape).astype(np.uint8)
+    image2 = np.random.randint(0, 256, size=image_shape).astype(np.uint8)
 
     psnr1 = compute_psnr(image1, image2)
     psnr2 = peak_signal_noise_ratio(image1, image2)
-    assert psnr1 == psnr2
+    assert abs(psnr1 - psnr2) < 1e-6

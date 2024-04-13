@@ -14,7 +14,7 @@ def to_y(image: np.ndarray) -> np.ndarray:
     if image.dtype == np.uint8:
         image = image.astype(np.float32) / 255.0
     y = np.dot(image, [65.481, 128.553, 24.966]) + 16.0
-    return y.astype(np.float32)
+    return y
 
 
 def crop_img_to_equal(im1: np.ndarray, im2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -40,7 +40,9 @@ def compute_psnr(im1: np.ndarray, im2: np.ndarray, y_only: bool = False, crop_bo
         im2 = im2[crop_border:-crop_border, crop_border:-crop_border]
     if y_only:
         im1, im2 = to_y(im1), to_y(im2)
-    error = np.mean((im1 - im2) ** 2)
+    elif im1.dtype != np.uint8:
+        im1, im2 = im1 * 255.0, im2 * 255.0
+    error = np.mean((im1.astype(np.float32) - im2.astype(np.float32)) ** 2)
     if error == 0:
         return np.inf
     p = 20 * np.log10(255.0 / np.sqrt(error))
