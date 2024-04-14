@@ -58,7 +58,7 @@ psnr, ssim = evaluator(model.inference_with_self_ensemble)
 ```python
 import torch
 
-from studiosr import Evaluator
+from studiosr import benchmark
 from studiosr.models import RCAN, HAN, SwinIR, HAT
 from studiosr.utils import get_device
 
@@ -67,5 +67,5 @@ for model_class in [RCAN, HAN, SwinIR, HAT]:
         device = get_device()
         model = model_class.from_pretrained(scale=scale).eval().to(device)
         print(f"Benchmark -> {model_class.__name__}")
-        Evaluator.benchmark(model.inference, scale=scale)
+        benchmark(model.inference, scale=scale)
 ```
