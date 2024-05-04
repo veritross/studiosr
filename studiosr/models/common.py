@@ -263,8 +263,7 @@ def calculate_mask(x_size: List[int], window_size: int, shift_size: int) -> torc
 
 def check_image_size(x: torch.Tensor, window_size: int) -> torch.Tensor:
     _, _, h, w = x.size()
-    h_pad = (h // window_size + 1) * window_size - h
-    w_pad = (w // window_size + 1) * window_size - w
-    x = torch.cat([x, torch.flip(x, [2])], 2)[:, :, : h + h_pad, :]
-    x = torch.cat([x, torch.flip(x, [3])], 3)[:, :, :, : w + w_pad]
+    mod_pad_h = (window_size - h % window_size) % window_size
+    mod_pad_w = (window_size - w % window_size) % window_size
+    x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), "reflect")
     return x

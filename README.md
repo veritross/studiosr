@@ -62,8 +62,6 @@ trainer.run()
 
 ### Evaluate
 ```python
-import torch
-
 from studiosr import Evaluator
 from studiosr.models import SwinIR
 from studiosr.utils import get_device

@@ -2,6 +2,7 @@ import os
 from itertools import repeat
 from typing import Dict, List, Optional
 
+import numpy as np
 import torch
 import torch.nn as nn
 from timm.layers import DropPath, trunc_normal_
@@ -238,6 +239,15 @@ class RSTB(nn.Module):
         return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x, x_size), x_size))) + x
 
 
+def check_image_size_for_eval(x: torch.Tensor, window_size: int) -> torch.Tensor:
+    _, _, h, w = x.size()
+    h_pad = (h // window_size + 1) * window_size - h
+    w_pad = (w // window_size + 1) * window_size - w
+    x = torch.cat([x, torch.flip(x, [2])], 2)[:, :, : h + h_pad, :]
+    x = torch.cat([x, torch.flip(x, [3])], 3)[:, :, :, : w + w_pad]
+    return x
+
+
 class SwinIR(Model):
     def __init__(
         self,
@@ -337,7 +347,9 @@ class SwinIR(Model):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         H, W = x.shape[2:]
-        x = check_image_size(x, self.window_size)
+
+        preprocess = check_image_size if self.training else check_image_size_for_eval
+        x = preprocess(x, self.window_size)
 
         x = self.normalizer.normalize(x)
 

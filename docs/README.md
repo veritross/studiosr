@@ -37,8 +37,6 @@ trainer.run()
 
 ### Evaluate
 ```python
-import torch
-
 from studiosr import Evaluator
 from studiosr.models import SwinIR
 from studiosr.utils import get_device
@@ -56,15 +54,13 @@ psnr, ssim = evaluator(model.inference_with_self_ensemble)
 
 ### Benchmark
 ```python
-import torch
-
 from studiosr import benchmark
 from studiosr.models import RCAN, HAN, SwinIR, HAT
 from studiosr.utils import get_device
 
+device = get_device()
 for model_class in [RCAN, HAN, SwinIR, HAT]:
     for scale in [2, 3, 4]:
-        device = get_device()
         model = model_class.from_pretrained(scale=scale).eval().to(device)
         print(f"Benchmark -> {model_class.__name__}")
         benchmark(model.inference, scale=scale)
