@@ -2,7 +2,6 @@ import os
 from itertools import repeat
 from typing import Dict, List, Optional
 
-import numpy as np
 import torch
 import torch.nn as nn
 from timm.layers import DropPath, trunc_normal_
@@ -266,25 +265,23 @@ class SwinIR(Model):
         resi_connection: Optional[nn.Module] = None,
     ) -> None:
         super().__init__()
-        num_in_ch = n_colors
-        num_out_ch = n_colors
-        num_feat = 64
-        self.img_range = img_range
         self.scale = scale
-        self.upsampler = upsampler
-        self.window_size = window_size
-        self.normalizer = Normalizer(img_range=img_range)
-
-        self.conv_first = nn.Conv2d(num_in_ch, embed_dim, 3, 1, 1)
-
-        self.num_layers = len(depths)
+        self.n_colors = n_colors
+        self.img_range = img_range
         self.embed_dim = embed_dim
-        self.num_features = embed_dim
+        self.depths = depths
+        self.num_heads = num_heads
+        self.window_size = window_size
         self.mlp_ratio = mlp_ratio
+        self.drop_rate = drop_rate
+        self.attn_drop_rate = attn_drop_rate
+        self.drop_path_rate = drop_path_rate
+        self.upsampler = upsampler
 
+        self.normalizer = Normalizer(img_range=img_range)
+        self.conv_first = nn.Conv2d(n_colors, embed_dim, 3, 1, 1)
         self.patch_embed = PatchEmbed(embed_dim=embed_dim, norm_layer=nn.LayerNorm)
         self.patch_unembed = PatchUnEmbed(embed_dim=embed_dim)
-
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
@@ -292,7 +289,7 @@ class SwinIR(Model):
 
         # build Residual Swin Transformer blocks (RSTB)
         self.layers = nn.ModuleList()
-        for i_layer in range(self.num_layers):
+        for i_layer in range(len(depths)):
             layer = RSTB(
                 dim=embed_dim,
                 depth=depths[i_layer],
@@ -305,22 +302,23 @@ class SwinIR(Model):
                 resi_connection=resi_connection,
             )
             self.layers.append(layer)
-        self.norm = nn.LayerNorm(self.num_features)
+        self.norm = nn.LayerNorm(embed_dim)
 
         # build the last conv layer in deep feature extraction
         self.conv_after_body = nn.Conv2d(embed_dim, embed_dim, 3, 1, 1)
 
         if self.upsampler == "pixelshuffle":
             # for classical SR
+            num_feat = 64
             self.conv_before_upsample = nn.Sequential(
                 nn.Conv2d(embed_dim, num_feat, 3, 1, 1),
                 nn.LeakyReLU(inplace=True),
             )
             self.upsample = Upsampler(scale, num_feat)
-            self.conv_last = nn.Conv2d(num_feat, num_out_ch, 3, 1, 1)
+            self.conv_last = nn.Conv2d(num_feat, n_colors, 3, 1, 1)
         elif self.upsampler == "pixelshuffledirect":
             # for lightweight SR (to save parameters)
-            self.upsample = Upsampler(scale, embed_dim, num_out_ch)
+            self.upsample = Upsampler(scale, embed_dim, n_colors)
 
         self.apply(self._init_weights)
 
@@ -365,6 +363,23 @@ class SwinIR(Model):
 
         x = self.normalizer.unnormalize(x)
         return x[:, :, : H * self.scale, : W * self.scale]
+
+    def get_model_config(self) -> Dict:
+        config = super().get_model_config()
+        config.update(
+            dict(
+                embed_dim=self.embed_dim,
+                depths=self.depths,
+                num_heads=self.num_heads,
+                window_size=self.window_size,
+                mlp_ratio=self.mlp_ratio,
+                drop_rate=self.drop_rate,
+                attn_drop_rate=self.attn_drop_rate,
+                drop_path_rate=self.drop_path_rate,
+                upsampler=self.upsampler,
+            )
+        )
+        return config
 
     def get_training_config(self) -> Dict:
         training_config = dict(

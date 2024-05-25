@@ -27,10 +27,11 @@ def converge_images(images: List[torch.Tensor]) -> torch.Tensor:
 
 
 class Model(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, scale: int = 4, n_colors: int = 3, img_range: float = 1.0) -> None:
         super().__init__()
-        self.img_range: float = 1.0
-        self.scale: int = 4
+        self.scale: int = scale
+        self.n_colors: int = n_colors
+        self.img_range: float = img_range
 
     @torch.inference_mode()
     def inference(self, image: np.ndarray) -> np.ndarray:
@@ -60,6 +61,14 @@ class Model(nn.Module):
         output = converge_images(outputs) * scale
         output = output.round().clip(0, 255).to(torch.uint8)
         return output.cpu().numpy()
+
+    def get_model_config(self) -> Dict:
+        config = dict(
+            scale=self.scale,
+            n_colors=self.n_colors,
+            img_range=self.img_range,
+        )
+        return config
 
     def get_training_config(self) -> Dict:
         training_config = dict()

@@ -11,8 +11,8 @@ class ESPCN(Model):
         self,
         scale: int = 4,
         n_colors: int = 3,
-        channels: int = 64,
         img_range: float = 1.0,
+        channels: int = 64,
     ) -> None:
         super().__init__()
         hidden_channels = channels // 2

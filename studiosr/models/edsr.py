@@ -15,12 +15,18 @@ class EDSR(Model):
         scale: int = 4,
         n_colors: int = 3,
         img_range: float = 1.0,
-        n_resblocks: int = 32,
         n_feats: int = 256,
+        n_resblocks: int = 32,
         res_scale: float = 0.1,
     ) -> None:
         super().__init__()
+        self.scale = scale
+        self.n_colors = n_colors
         self.img_range = img_range
+        self.n_feats = n_feats
+        self.n_resblocks = n_resblocks
+        self.res_scale = res_scale
+
         self.sub_mean = MeanShift(img_range)
         self.add_mean = MeanShift(img_range, sign=1)
 
@@ -40,6 +46,20 @@ class EDSR(Model):
         x = self.tail(res)
         x = self.add_mean(x)
         return x
+
+    def get_model_config(self) -> Dict:
+        config = super().get_model_config()
+        config.update(
+            dict(
+                scale=self.scale,
+                n_colors=self.n_colors,
+                img_range=self.img_range,
+                n_feats=self.n_feats,
+                n_resblocks=self.n_resblocks,
+                res_scale=self.res_scale,
+            )
+        )
+        return config
 
     def get_training_config(self) -> Dict:
         training_config = dict(

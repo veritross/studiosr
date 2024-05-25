@@ -1,3 +1,4 @@
+import json
 import os
 import platform
 from typing import Callable, List, Tuple
@@ -155,6 +156,10 @@ class Trainer:
             best_psnr=self.best_psnr,
         )
         torch.save(train_dict, train_path)
+        config = self.model.get_model_config()
+        config_path = os.path.join(self.ckpt_path, "params.json")
+        with open(config_path, "w") as outfile:
+            json.dump(config, outfile)
         return model_path, train_path
 
     def load(self, file_name: str) -> bool:

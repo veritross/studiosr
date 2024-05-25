@@ -58,13 +58,21 @@ class HAN(Model):
         scale: int = 4,
         n_colors: int = 3,
         img_range: float = 1.0,
-        n_resgroups: int = 10,
-        n_resblocks: int = 20,
         n_feats: int = 64,
+        n_resblocks: int = 20,
+        n_resgroups: int = 10,
         reduction: int = 16,
     ) -> None:
         super().__init__()
         self.img_range = img_range
+        self.scale = scale
+        self.n_colors = n_colors
+        self.img_range = img_range
+        self.n_feats = n_feats
+        self.n_resblocks = n_resblocks
+        self.n_resgroups = n_resgroups
+        self.reduction = reduction
+
         self.sub_mean = MeanShift(img_range)
         self.add_mean = MeanShift(img_range, sign=1)
 
@@ -102,6 +110,21 @@ class HAN(Model):
         x = self.tail(res)
         x = self.add_mean(x)
         return x
+
+    def get_model_config(self) -> Dict:
+        config = super().get_model_config()
+        config.update(
+            dict(
+                scale=self.scale,
+                n_colors=self.n_colors,
+                img_range=self.img_range,
+                n_feats=self.n_feats,
+                n_resblocks=self.n_resblocks,
+                n_resgroups=self.n_resgroups,
+                reduction=self.reduction,
+            )
+        )
+        return config
 
     def get_training_config(self) -> Dict:
         training_config = dict(

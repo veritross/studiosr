@@ -405,17 +405,24 @@ class HAT(Model):
         overlap_ratio: float = 0.5,
     ) -> None:
         super().__init__()
-
+        self.scale = scale
+        self.n_colors = n_colors
+        self.img_range = img_range
+        self.embed_dim = embed_dim
+        self.depths = depths
+        self.num_heads = num_heads
         self.window_size = window_size
-        self.shift_size = window_size // 2
+        self.mlp_ratio = mlp_ratio
+        self.drop_rate = drop_rate
+        self.attn_drop_rate = attn_drop_rate
+        self.drop_path_rate = drop_path_rate
+
+        self.compress_ratio = compress_ratio
+        self.squeeze_factor = squeeze_factor
+        self.conv_scale = conv_scale
         self.overlap_ratio = overlap_ratio
 
-        num_in_ch = n_colors
-        num_out_ch = n_colors
-        num_feat = 64
-        self.img_range = img_range
-        self.scale = scale
-        self.normalizer = Normalizer(img_range=img_range)
+        self.shift_size = window_size // 2
 
         # relative position index
         relative_position_index_SA = self.calculate_rpi_sa()
@@ -423,16 +430,10 @@ class HAT(Model):
         self.register_buffer("relative_position_index_SA", relative_position_index_SA)
         self.register_buffer("relative_position_index_OCA", relative_position_index_OCA)
 
-        self.conv_first = nn.Conv2d(num_in_ch, embed_dim, 3, 1, 1)
-
-        self.num_layers = len(depths)
-        self.embed_dim = embed_dim
-        self.num_features = embed_dim
-        self.mlp_ratio = mlp_ratio
-
+        self.normalizer = Normalizer(img_range=img_range)
+        self.conv_first = nn.Conv2d(n_colors, embed_dim, 3, 1, 1)
         self.patch_embed = PatchEmbed(embed_dim=embed_dim, norm_layer=nn.LayerNorm)
         self.patch_unembed = PatchUnEmbed(embed_dim=embed_dim)
-
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
@@ -440,7 +441,7 @@ class HAT(Model):
 
         # build Residual Hybrid Attention Groups (RHAG)
         self.layers = nn.ModuleList()
-        for i_layer in range(self.num_layers):
+        for i_layer in range(len(depths)):
             layer = RHAG(
                 dim=embed_dim,
                 depth=depths[i_layer],
@@ -456,12 +457,14 @@ class HAT(Model):
                 overlap_ratio=overlap_ratio,
             )
             self.layers.append(layer)
-        self.norm = nn.LayerNorm(self.num_features)
+        self.norm = nn.LayerNorm(embed_dim)
 
         self.conv_after_body = nn.Conv2d(embed_dim, embed_dim, 3, 1, 1)
+
+        num_feat = 64
         self.conv_before_upsample = nn.Sequential(nn.Conv2d(embed_dim, num_feat, 3, 1, 1), nn.LeakyReLU(inplace=True))
         self.upsample = Upsampler(scale, num_feat)
-        self.conv_last = nn.Conv2d(num_feat, num_out_ch, 3, 1, 1)
+        self.conv_last = nn.Conv2d(num_feat, n_colors, 3, 1, 1)
 
         self.apply(self._init_weights)
 
@@ -549,6 +552,26 @@ class HAT(Model):
 
         x = self.normalizer.unnormalize(x)
         return x[:, :, : H * self.scale, : W * self.scale]
+
+    def get_model_config(self) -> Dict:
+        config = super().get_model_config()
+        config.update(
+            dict(
+                embed_dim=self.embed_dim,
+                depths=self.depths,
+                num_heads=self.num_heads,
+                window_size=self.window_size,
+                mlp_ratio=self.mlp_ratio,
+                drop_rate=self.drop_rate,
+                attn_drop_rate=self.attn_drop_rate,
+                drop_path_rate=self.drop_path_rate,
+                compress_ratio=self.compress_ratio,
+                squeeze_factor=self.squeeze_factor,
+                conv_scale=self.conv_scale,
+                overlap_ratio=self.overlap_ratio,
+            )
+        )
+        return config
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> "HAT":

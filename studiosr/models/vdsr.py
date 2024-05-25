@@ -14,15 +14,18 @@ class VDSR(Model):
         self,
         scale: int = 4,
         n_colors: int = 3,
-        channels: int = 64,
         img_range: float = 1.0,
+        channels: int = 64,
         n_layers: int = 18,
     ) -> None:
         super().__init__()
-
+        self.scale = scale
+        self.n_colors = n_colors
         self.img_range = img_range
-        self.normalizer = Normalizer(img_range=img_range)
+        self.channels = channels
+        self.n_layers = n_layers
 
+        self.normalizer = Normalizer(img_range=img_range)
         self.upsample = nn.Upsample(scale_factor=scale, mode="bicubic")
         layers = [conv2d(n_colors, channels, 3), nn.ReLU(True)]
         for _ in range(n_layers):
@@ -45,6 +48,16 @@ class VDSR(Model):
 
         x = self.normalizer.unnormalize(x)
         return x
+
+    def get_model_config(self) -> Dict:
+        config = super().get_model_config()
+        config.update(
+            dict(
+                channels=self.channels,
+                n_layers=self.n_layers,
+            )
+        )
+        return config
 
     def get_training_config(self) -> Dict:
         training_config = dict(
