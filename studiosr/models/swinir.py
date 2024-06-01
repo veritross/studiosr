@@ -10,8 +10,6 @@ from studiosr.models.common import (
     Mlp,
     Model,
     Normalizer,
-    PatchEmbed,
-    PatchUnEmbed,
     Upsampler,
     calculate_mask,
     check_image_size,
@@ -19,6 +17,19 @@ from studiosr.models.common import (
     window_reverse,
 )
 from studiosr.utils import download
+
+
+class PatchEmbed(nn.Module):
+    def __init__(self, embed_dim: int = 96, norm_layer: Optional[nn.Module] = None) -> None:
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.norm = None if norm_layer is None else norm_layer(embed_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.permute(0, 2, 3, 1)
+        if self.norm is not None:
+            x = self.norm(x)
+        return x
 
 
 class WindowAttention(nn.Module):
@@ -132,14 +143,12 @@ class SwinTransformerBlock(nn.Module):
             drop=drop,
         )
 
-    def forward(self, x: torch.Tensor, x_size: List[int]) -> torch.Tensor:
-        H, W = x_size
-        B, L, C = x.shape
-        # assert L == H * W, "input feature has wrong size"
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        _, H, W, C = x.shape
+        x_size = (H, W)
 
         shortcut = x
         x = self.norm1(x)
-        x = x.view(B, H, W, C)
 
         # cyclic
         shifted_x = torch.roll(x, (-self.shift_size, -self.shift_size), (1, 2)) if self.shift_size > 0 else x
@@ -159,7 +168,6 @@ class SwinTransformerBlock(nn.Module):
         x = torch.roll(shifted_x, (self.shift_size, self.shift_size), (1, 2)) if self.shift_size > 0 else shifted_x
 
         # FFN
-        x = x.view(B, H * W, C)
         x = shortcut + self.drop_path(x)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
 
@@ -199,9 +207,9 @@ class BasicLayer(nn.Module):
             ]
         )
 
-    def forward(self, x: torch.Tensor, x_size: List[int]) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         for blk in self.blocks:
-            x = blk(x, x_size)
+            x = blk(x)
         return x
 
 
@@ -231,11 +239,11 @@ class RSTB(nn.Module):
             drop_path=drop_path,
         )
         self.conv = resi_connection(dim) if resi_connection else nn.Conv2d(dim, dim, 3, 1, 1)
-        self.patch_embed = PatchEmbed(embed_dim=dim)
-        self.patch_unembed = PatchUnEmbed(embed_dim=dim)
+        self.patch_embed = lambda x: torch.permute(x, (0, 2, 3, 1))
+        self.patch_unembed = lambda x: torch.permute(x, (0, 3, 1, 2))
 
-    def forward(self, x: torch.Tensor, x_size: List[int]) -> torch.Tensor:
-        return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x, x_size), x_size))) + x
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x)))) + x
 
 
 def check_image_size_for_eval(x: torch.Tensor, window_size: int) -> torch.Tensor:
@@ -281,7 +289,7 @@ class SwinIR(Model):
         self.normalizer = Normalizer(img_range=img_range)
         self.conv_first = nn.Conv2d(n_colors, embed_dim, 3, 1, 1)
         self.patch_embed = PatchEmbed(embed_dim=embed_dim, norm_layer=nn.LayerNorm)
-        self.patch_unembed = PatchUnEmbed(embed_dim=embed_dim)
+        self.patch_unembed = lambda x: torch.permute(x, (0, 3, 1, 2))
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
@@ -332,15 +340,14 @@ class SwinIR(Model):
             nn.init.constant_(m.weight, 1.0)
 
     def forward_features(self, x: torch.Tensor) -> torch.Tensor:
-        x_size = (x.shape[2], x.shape[3])
         x = self.patch_embed(x)
         x = self.pos_drop(x)
 
         for layer in self.layers:
-            x = layer(x, x_size)
+            x = layer(x)
 
         x = self.norm(x)  # B L C
-        x = self.patch_unembed(x, x_size)
+        x = self.patch_unembed(x)
         return x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
