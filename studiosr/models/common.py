@@ -43,7 +43,9 @@ class Model(nn.Module):
         x = image.permute(2, 0, 1).unsqueeze(0)
         output = self.forward(x)[0].permute(1, 2, 0) * scale
         output = output.round().clip(0, 255).to(torch.uint8)
-        return output.cpu().numpy()
+        output = output.cpu().numpy()
+        torch.cuda.empty_cache()
+        return output
 
     @torch.inference_mode()
     def inference_with_self_ensemble(self, image: np.ndarray) -> np.ndarray:
@@ -60,7 +62,9 @@ class Model(nn.Module):
             outputs.append(output)
         output = converge_images(outputs) * scale
         output = output.round().clip(0, 255).to(torch.uint8)
-        return output.cpu().numpy()
+        output = output.cpu().numpy()
+        torch.cuda.empty_cache()
+        return output
 
     def get_model_config(self) -> Dict:
         config = dict(
