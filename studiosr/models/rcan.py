@@ -48,7 +48,6 @@ class RCAN(Model):
         reduction: int = 16,
     ) -> None:
         super().__init__()
-        self.img_range = img_range
         self.scale = scale
         self.n_colors = n_colors
         self.img_range = img_range
@@ -107,7 +106,6 @@ class RCAN(Model):
 
     @classmethod
     def from_pretrained(cls, scale: int = 4) -> "RCAN":
-
         pretrained_dir = "pretrained"
         rcan_dir = "models_ECCV2018RCAN"
         rcan_path = os.path.join(pretrained_dir, rcan_dir)
